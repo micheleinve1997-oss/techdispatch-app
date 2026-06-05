@@ -45,11 +45,17 @@ def serialize(doc: dict) -> dict:
 
 @router.get("/", response_model=List[ClienteResponse])
 async def lista_clienti(stato: Optional[str] = None, attivo: bool = True):
-    filtro = {"attivo": attivo}
+    filtro = {"attivo": attivo, "ragione_sociale": {"$exists": True}}
     if stato:
         filtro["stato"] = stato
-    clienti = await db.clienti.find(filtro).sort("ragione_sociale", 1).to_list(500)
-    return [serialize(c) for c in clienti]
+    clienti = await db.clienti.find(filtro).sort("ragione_sociale", 1).to_list(1000)
+    result = []
+    for c in clienti:
+        try:
+            result.append(serialize(c))
+        except Exception:
+            pass
+    return result
 
 
 @router.get("/{cliente_id}", response_model=ClienteResponse)

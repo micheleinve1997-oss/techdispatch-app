@@ -25,12 +25,12 @@ class StatoCliente(str, Enum):
 
 
 class SedeLegale(BaseModel):
-    indirizzo: str
-    cap: str
-    citta: str
-    provincia: str
-    telefono: str
-    email: str
+    indirizzo: Optional[str] = None
+    cap: Optional[str] = None
+    citta: Optional[str] = None
+    provincia: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
     pec: Optional[str] = None
 
 
