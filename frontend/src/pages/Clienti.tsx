@@ -167,12 +167,12 @@ export default function Clienti() {
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50 border-b border-slate-200">
-                <ThCol label="Codice" col="codice_cliente" className="w-28" />
-                <ThCol label="Ragione Sociale" col="ragione_sociale" />
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">Telefono</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
-                <ThCol label="Città" col="citta" className="w-36" />
-                <ThCol label="Stato" col="stato" className="w-28" />
+                <ThCol label="Codice" col="codice_cliente" className="w-[8%]" />
+                <ThCol label="Ragione Sociale" col="ragione_sociale" className="w-[28%]" />
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-[16%]">Telefono</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide w-[24%]">Email</th>
+                <ThCol label="Città" col="citta" className="w-[16%]" />
+                <ThCol label="Stato" col="stato" className="w-[8%]" />
                 <th className="w-10" />
               </tr>
             </thead>
