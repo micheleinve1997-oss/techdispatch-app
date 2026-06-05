@@ -142,11 +142,15 @@ async def import_clienti(file: UploadFile = File(...), mapping: str = ""):
     df = df.fillna("")
 
     # Parsing mapping JSON
+    print(f"DEBUG mapping ricevuto: '{mapping}'")
     try:
         raw_map: Dict[str, str] = json.loads(mapping) if mapping else {}
+        print(f"DEBUG raw_map: {raw_map}")
         # Filtra colonne senza campo assegnato
         col_map = {k: v for k, v in raw_map.items() if v and v.strip()}
-    except Exception:
+        print(f"DEBUG col_map filtrato: {col_map}")
+    except Exception as e:
+        print(f"DEBUG errore parsing: {e}")
         col_map = {}
 
     # Se nessun mapping, usa auto-mapping
