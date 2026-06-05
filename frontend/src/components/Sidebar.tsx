@@ -11,7 +11,7 @@ const nav = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-60 bg-slate-900 text-white flex flex-col min-h-screen shrink-0">
+    <aside className="w-60 bg-slate-900 text-white flex flex-col h-full shrink-0">
       <div className="px-6 py-5 border-b border-slate-700/60">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
