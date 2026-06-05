@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Building2, Trash2, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { clientiApi, type Cliente } from '../api/clienti'
+import { clientiApi } from '../api/clienti'
 import StatoBadge from '../components/StatoBadge'
 
 type SortKey = 'ragione_sociale' | 'codice_cliente' | 'citta' | 'stato'
