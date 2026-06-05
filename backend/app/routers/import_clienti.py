@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any
 from datetime import datetime, timezone
@@ -126,7 +126,7 @@ async def preview_import(file: UploadFile = File(...)):
 
 
 @router.post("/import")
-async def import_clienti(file: UploadFile = File(...), mapping: str = ""):
+async def import_clienti(file: UploadFile = File(...), mapping: str = Form(default="")):
     """Importa clienti dal file usando il mapping colonne→campi."""
     import json
 
