@@ -58,14 +58,7 @@ async def lista_clienti(stato: Optional[str] = None, attivo: bool = True):
     return result
 
 
-@router.get("/{cliente_id}", response_model=ClienteResponse)
-async def get_cliente(cliente_id: str):
-    doc = await db.clienti.find_one({"_id": ObjectId(cliente_id)})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Cliente non trovato")
-    return serialize(doc)
-
-
+# IMPORTANTE: questa route deve stare PRIMA di /{cliente_id}
 @router.get("/check-duplicato")
 async def check_duplicato(partita_iva: Optional[str] = None, codice_fiscale: Optional[str] = None, escludi_id: Optional[str] = None):
     """Controlla se esiste già un cliente con la stessa P.IVA o CF."""
@@ -93,6 +86,14 @@ async def check_duplicato(partita_iva: Optional[str] = None, codice_fiscale: Opt
             "ragione_sociale": doc.get("ragione_sociale", ""),
         }
     }
+
+
+@router.get("/{cliente_id}", response_model=ClienteResponse)
+async def get_cliente(cliente_id: str):
+    doc = await db.clienti.find_one({"_id": ObjectId(cliente_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Cliente non trovato")
+    return serialize(doc)
 
 
 @router.post("/", response_model=ClienteResponse, status_code=status.HTTP_201_CREATED)
