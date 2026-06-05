@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Upload, Download, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet } from 'lucide-react'
 import axios from 'axios'
 
 const baseURL = import.meta.env.VITE_API_URL
@@ -41,23 +41,30 @@ export default function ImportClienti() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [step, setStep] = useState<'upload' | 'mapping' | 'done'>('upload')
+  const [error, setError] = useState<string | null>(null)
 
   const downloadTemplate = () => {
     window.open(`${baseURL}/clienti/template`, '_blank')
   }
 
   const handleFile = async (f: File) => {
+    setError(null)
     setFile(f)
     setLoading(true)
     try {
       const form = new FormData()
       form.append('file', f)
-      const { data } = await api.post<PreviewData>('/clienti/preview-import', form)
+      const { data } = await api.post<PreviewData>('/clienti/preview-import', form, {
+        timeout: 30000,
+      })
       setPreview(data)
       setMapping(data.auto_mapping)
       setStep('mapping')
-    } catch {
-      alert('Errore nella lettura del file. Verifica che sia un file Excel o CSV valido.')
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? err.response?.data?.detail ?? err.message
+        : 'Errore sconosciuto'
+      setError(`Impossibile leggere il file: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -65,17 +72,23 @@ export default function ImportClienti() {
 
   const handleImport = async () => {
     if (!file) return
+    setError(null)
     setLoading(true)
     try {
       const form = new FormData()
       form.append('file', file)
       form.append('mapping', JSON.stringify(mapping))
-      const { data } = await api.post<ImportResult>('/clienti/import', form)
+      const { data } = await api.post<ImportResult>('/clienti/import', form, {
+        timeout: 60000,
+      })
       setResult(data)
       setStep('done')
       qc.invalidateQueries({ queryKey: ['clienti'] })
-    } catch {
-      alert('Errore durante l\'importazione.')
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? err.response?.data?.detail ?? err.message
+        : 'Errore sconosciuto'
+      setError(`Errore durante l'importazione: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -87,6 +100,7 @@ export default function ImportClienti() {
     setMapping({})
     setResult(null)
     setStep('upload')
+    setError(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -103,11 +117,23 @@ export default function ImportClienti() {
       </div>
 
       <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl space-y-5">
+
+          {/* Errore visibile */}
+          {error && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-700">Errore</p>
+                <p className="text-sm text-red-600 mt-0.5">{error}</p>
+              </div>
+              <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+            </div>
+          )}
 
           {/* Step 1 — Upload */}
           {step === 'upload' && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {/* Download template */}
               <div className="border border-blue-200 bg-blue-50 rounded-xl p-5 flex items-start gap-4">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
@@ -116,7 +142,7 @@ export default function ImportClienti() {
                 <div className="flex-1">
                   <p className="font-medium text-slate-800">Scarica il template Excel</p>
                   <p className="text-sm text-slate-500 mt-0.5">
-                    Usa il nostro modello per importare i clienti senza errori. Include le colonne già pronte con esempio.
+                    Usa il nostro modello con le colonne già pronte. Puoi anche usare qualsiasi Excel — le colonne vengono riconosciute automaticamente.
                   </p>
                   <button
                     onClick={downloadTemplate}
@@ -132,22 +158,38 @@ export default function ImportClienti() {
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-3">Carica il tuo file</p>
                 <label
-                  className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-10 cursor-pointer transition bg-slate-50 hover:bg-blue-50/30"
+                  className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-10 cursor-pointer transition
+                    ${loading
+                      ? 'border-blue-300 bg-blue-50/40 cursor-wait'
+                      : 'border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/30'
+                    }`}
                   onDragOver={e => e.preventDefault()}
                   onDrop={e => {
                     e.preventDefault()
+                    if (loading) return
                     const f = e.dataTransfer.files[0]
                     if (f) handleFile(f)
                   }}
                 >
-                  <Upload size={32} className="text-slate-400 mb-3" />
-                  <p className="text-sm font-medium text-slate-600">Trascina il file qui oppure clicca per sceglierlo</p>
-                  <p className="text-xs text-slate-400 mt-1">Excel (.xlsx) o CSV (.csv)</p>
+                  {loading ? (
+                    <>
+                      <RefreshCw size={32} className="text-blue-500 animate-spin mb-3" />
+                      <p className="text-sm font-medium text-blue-600">Lettura file in corso...</p>
+                      <p className="text-xs text-slate-400 mt-1">potrebbe richiedere qualche secondo</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={32} className="text-slate-400 mb-3" />
+                      <p className="text-sm font-medium text-slate-600">Trascina il file qui oppure clicca per sceglierlo</p>
+                      <p className="text-xs text-slate-400 mt-1">Excel (.xlsx) o CSV (.csv)</p>
+                    </>
+                  )}
                   <input
                     ref={fileRef}
                     type="file"
                     accept=".xlsx,.xls,.csv"
                     className="hidden"
+                    disabled={loading}
                     onChange={e => {
                       const f = e.target.files?.[0]
                       if (f) handleFile(f)
@@ -155,27 +197,21 @@ export default function ImportClienti() {
                   />
                 </label>
               </div>
-
-              {loading && (
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <RefreshCw size={15} className="animate-spin" />
-                  Lettura file in corso...
-                </div>
-              )}
             </div>
           )}
 
           {/* Step 2 — Mapping */}
           {step === 'mapping' && preview && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-slate-800">Abbina le colonne</p>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    File: <span className="font-medium">{file?.name}</span> — {preview.total_rows} righe trovate
-                  </p>
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet size={20} className="text-emerald-500" />
+                  <div>
+                    <p className="font-medium text-slate-800">{file?.name}</p>
+                    <p className="text-sm text-slate-500">{preview.total_rows} righe trovate</p>
+                  </div>
                 </div>
-                <button onClick={reset} className="text-sm text-slate-500 hover:text-slate-700">
+                <button onClick={reset} className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2">
                   Cambia file
                 </button>
               </div>
@@ -183,7 +219,7 @@ export default function ImportClienti() {
               {/* Mapping table */}
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="grid grid-cols-2 bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Colonna nel tuo file</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Colonna nel file</p>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Campo TechDispatch</p>
                 </div>
                 <div className="divide-y divide-slate-100">
@@ -242,10 +278,12 @@ export default function ImportClienti() {
               <button
                 onClick={handleImport}
                 disabled={loading}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition"
               >
-                {loading ? <RefreshCw size={15} className="animate-spin" /> : <Upload size={15} />}
-                {loading ? 'Importazione in corso...' : `Importa ${preview.total_rows} clienti`}
+                {loading
+                  ? <><RefreshCw size={15} className="animate-spin" /> Importazione in corso...</>
+                  : <><Upload size={15} /> Importa {preview.total_rows} clienti</>
+                }
               </button>
             </div>
           )}
@@ -265,7 +303,7 @@ export default function ImportClienti() {
                   </div>
                   <div className="bg-white rounded-lg p-3 text-center border border-slate-100">
                     <p className="text-2xl font-bold text-slate-400">{result.saltati}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Saltati</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Saltati (duplicati)</p>
                   </div>
                   <div className="bg-white rounded-lg p-3 text-center border border-red-100">
                     <p className="text-2xl font-bold text-red-500">{result.errori.length}</p>
