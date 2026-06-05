@@ -1,10 +1,12 @@
 ﻿import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, Trash2, Upload, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Plus, Search, Building2, Trash2, Upload, ChevronUp, ChevronDown, ChevronsUpDown, List, Map } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
 import StatoBadge from '../components/StatoBadge'
+import MappaClienti from '../components/MappaClienti'
 
+type Tab = 'lista' | 'mappa'
 type SortKey = 'ragione_sociale' | 'codice_cliente' | 'citta' | 'stato'
 type SortDir = 'asc' | 'desc'
 type FiltroStato = 'tutti' | 'COMPLETO' | 'INCOMPLETO' | 'BOZZA'
@@ -17,6 +19,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 }
 
 export default function Clienti() {
+  const [tab, setTab] = useState<Tab>('lista')
   const [search, setSearch] = useState('')
   const [filtroStato, setFiltroStato] = useState<FiltroStato>('tutti')
   const [sortKey, setSortKey] = useState<SortKey>('ragione_sociale')
@@ -122,6 +125,23 @@ export default function Clienti() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Tab switcher */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-0.5">
+              <button
+                onClick={() => setTab('lista')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${tab === 'lista' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <List size={13} />
+                Lista
+              </button>
+              <button
+                onClick={() => setTab('mappa')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${tab === 'mappa' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Map size={13} />
+                Mappa
+              </button>
+            </div>
             <button
               onClick={() => navigate('/clienti-import')}
               className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
@@ -147,8 +167,13 @@ export default function Clienti() {
         </p>
       </div>
 
-      {/* Tabella */}
-      <div className="flex-1 overflow-auto">
+      {/* Tab: Mappa — rimane montata per non perdere lo stato geocoding */}
+      <div className={`flex-1 overflow-hidden ${tab === 'mappa' ? 'flex flex-col' : 'hidden'}`}>
+        <MappaClienti clienti={clienti} />
+      </div>
+
+      {/* Tab: Lista */}
+      <div className={`flex-1 overflow-auto ${tab === 'lista' ? '' : 'hidden'}`}>
         {isLoading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
