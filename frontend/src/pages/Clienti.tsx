@@ -164,7 +164,7 @@ export default function Clienti() {
             </p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
+          <table className="w-full table-fixed border-collapse">
             <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50 border-b border-slate-200">
                 <ThCol label="Codice" col="codice_cliente" className="w-[8%]" />
