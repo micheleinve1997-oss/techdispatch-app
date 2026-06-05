@@ -4,9 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Upload, Download, CheckCircle, AlertCircle, RefreshCw, FileSpreadsheet } from 'lucide-react'
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
+const baseURL = `${import.meta.env.VITE_API_URL || 'https://techdispatch-api.onrender.com'}/api`
 
 const api = axios.create({ baseURL })
 
