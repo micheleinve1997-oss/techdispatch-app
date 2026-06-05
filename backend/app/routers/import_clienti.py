@@ -36,6 +36,61 @@ TEMPLATE_FIELDS = [
 TEMPLATE_COLUMNS = [f[0] for f in TEMPLATE_FIELDS]
 FIELD_MAP = {f[0]: f[1] for f in TEMPLATE_FIELDS}
 
+# Alias aggiuntivi per auto-mapping flessibile (snake_case, varianti comuni)
+_EXTRA_ALIASES: Dict[str, str] = {
+    "ragione sociale":          "ragione_sociale",
+    "ragione_sociale":          "ragione_sociale",
+    "azienda":                  "ragione_sociale",
+    "nome azienda":             "ragione_sociale",
+    "codice fiscale":           "codice_fiscale",
+    "codice_fiscale":           "codice_fiscale",
+    "cf":                       "codice_fiscale",
+    "partita iva":              "partita_iva",
+    "partita_iva":              "partita_iva",
+    "piva":                     "partita_iva",
+    "p.iva":                    "partita_iva",
+    "indirizzo sede legale":    "sede_legale.indirizzo",
+    "indirizzo_sede_legale":    "sede_legale.indirizzo",
+    "indirizzo":                "sede_legale.indirizzo",
+    "via":                      "sede_legale.indirizzo",
+    "cap":                      "sede_legale.cap",
+    "citta":                    "sede_legale.citta",
+    "città":                    "sede_legale.citta",
+    "city":                     "sede_legale.citta",
+    "comune":                   "sede_legale.citta",
+    "provincia":                "sede_legale.provincia",
+    "prov":                     "sede_legale.provincia",
+    "telefono":                 "sede_legale.telefono",
+    "tel":                      "sede_legale.telefono",
+    "phone":                    "sede_legale.telefono",
+    "email":                    "sede_legale.email",
+    "mail":                     "sede_legale.email",
+    "e-mail":                   "sede_legale.email",
+    "pec":                      "sede_legale.pec",
+    "codice sdi":               "fatturazione_elettronica.codice_sdi",
+    "codice_sdi":               "fatturazione_elettronica.codice_sdi",
+    "sdi":                      "fatturazione_elettronica.codice_sdi",
+    "pec fatturazione":         "fatturazione_elettronica.pec_fe",
+    "pec_fe":                   "fatturazione_elettronica.pec_fe",
+    "metodo pagamento":         "pagamento.metodo",
+    "metodo_pagamento":         "pagamento.metodo",
+    "condizioni pagamento":     "pagamento.condizioni",
+    "condizioni_pagamento":     "pagamento.condizioni",
+    "iban":                     "pagamento.iban",
+    "note":                     "note",
+    "notes":                    "note",
+}
+
+def _auto_map_col(col: str) -> str | None:
+    """Restituisce il campo interno per una colonna, usando template e alias."""
+    col_clean = col.strip().lower()
+    # Prima: match esatto su template
+    for template_col, field in FIELD_MAP.items():
+        if col_clean == template_col.lower().replace(" *", ""):
+            return field
+    # Poi: alias flessibili
+    return _EXTRA_ALIASES.get(col_clean)
+
 
 @router.get("/template")
 def scarica_template():
@@ -105,14 +160,12 @@ async def preview_import(file: UploadFile = File(...)):
     df = df.fillna("")
     columns = list(df.columns)
 
-    # Suggerisce mapping automatico
+    # Suggerisce mapping automatico (template + alias snake_case)
     auto_mapping: Dict[str, str] = {}
     for col in columns:
-        col_clean = col.strip().lower()
-        for template_col, field in FIELD_MAP.items():
-            if col_clean == template_col.lower().replace(" *", ""):
-                auto_mapping[col] = field
-                break
+        field = _auto_map_col(col)
+        if field:
+            auto_mapping[col] = field
 
     preview = df.head(3).to_dict(orient="records")
 
@@ -148,14 +201,12 @@ async def import_clienti(file: UploadFile = File(...), mapping: str = Form(defau
     except Exception:
         col_map = {}
 
-    # Se nessun mapping, usa auto-mapping
+    # Se nessun mapping fornito, usa auto-mapping flessibile
     if not col_map:
         for col in df.columns:
-            col_clean = col.strip().lower()
-            for template_col, field in FIELD_MAP.items():
-                if col_clean == template_col.lower().replace(" *", ""):
-                    col_map[col] = field
-                    break
+            field = _auto_map_col(col)
+            if field:
+                col_map[col] = field
 
     results = {"importati": 0, "saltati": 0, "errori": []}
 
