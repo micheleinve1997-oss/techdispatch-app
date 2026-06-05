@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
 import { clientiApi, type ClienteCreate, type Contatto } from '../api/clienti'
 import StatoBadge from '../components/StatoBadge'
+import DuplicatoAlert from '../components/DuplicatoAlert'
 import { SkeletonForm } from '../components/Skeleton'
+
+const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 
 const SEZIONI = ['Anagrafica', 'Sede Legale', 'Fatturazione', 'Contatti', 'Pagamento', 'Note']
 
@@ -57,6 +60,7 @@ export default function ClienteForm() {
   const isNew = id === 'nuovo'
   const [sezione, setSezione] = useState(0)
   const [form, setForm] = useState<ClienteCreate>(emptyForm())
+  const [duplicato, setDuplicato] = useState<{cliente: {id:string;codice_cliente:string;ragione_sociale:string};campo:string} | null>(null)
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ['cliente', id],
@@ -78,6 +82,21 @@ export default function ClienteForm() {
       })
     }
   }, [cliente])
+
+  const checkDuplicato = useCallback(async (campo: 'partita_iva' | 'codice_fiscale', valore: string) => {
+    if (!valore || valore.length < 5) return
+    try {
+      const params = new URLSearchParams({ [campo === 'partita_iva' ? 'partita_iva' : 'codice_fiscale']: valore })
+      if (!isNew && id) params.append('escludi_id', id)
+      const res = await fetch(`${baseURL}/clienti/check-duplicato?${params}`)
+      const data = await res.json()
+      if (data.duplicato) {
+        setDuplicato({ cliente: data.cliente, campo: campo === 'partita_iva' ? 'Partita IVA' : 'Codice Fiscale' })
+      } else {
+        setDuplicato(null)
+      }
+    } catch { /* silenzioso */ }
+  }, [isNew, id])
 
   const saveMutation = useMutation({
     mutationFn: () => isNew ? clientiApi.create(form) : clientiApi.update(id!, form),
@@ -182,12 +201,29 @@ export default function ClienteForm() {
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Codice Fiscale">
-                  <Input value={form.codice_fiscale ?? ''} onChange={e => set('codice_fiscale', e.target.value)} placeholder="12345678901" />
+                  <Input
+                    value={form.codice_fiscale ?? ''}
+                    onChange={e => set('codice_fiscale', e.target.value)}
+                    onBlur={e => checkDuplicato('codice_fiscale', e.target.value)}
+                    placeholder="12345678901"
+                  />
                 </Field>
                 <Field label="Partita IVA">
-                  <Input value={form.partita_iva ?? ''} onChange={e => set('partita_iva', e.target.value)} placeholder="IT12345678901" />
+                  <Input
+                    value={form.partita_iva ?? ''}
+                    onChange={e => set('partita_iva', e.target.value)}
+                    onBlur={e => checkDuplicato('partita_iva', e.target.value)}
+                    placeholder="IT12345678901"
+                  />
                 </Field>
               </div>
+              {duplicato && (
+                <DuplicatoAlert
+                  cliente={duplicato.cliente}
+                  campo={duplicato.campo}
+                  onClose={() => setDuplicato(null)}
+                />
+              )}
             </div>
           )}
 

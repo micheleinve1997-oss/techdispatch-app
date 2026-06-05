@@ -66,6 +66,35 @@ async def get_cliente(cliente_id: str):
     return serialize(doc)
 
 
+@router.get("/check-duplicato")
+async def check_duplicato(partita_iva: Optional[str] = None, codice_fiscale: Optional[str] = None, escludi_id: Optional[str] = None):
+    """Controlla se esiste già un cliente con la stessa P.IVA o CF."""
+    if not partita_iva and not codice_fiscale:
+        return {"duplicato": False}
+    filtro: dict = {"attivo": True}
+    condizioni = []
+    if partita_iva and partita_iva.strip():
+        condizioni.append({"partita_iva": partita_iva.strip()})
+    if codice_fiscale and codice_fiscale.strip():
+        condizioni.append({"codice_fiscale": codice_fiscale.strip()})
+    if not condizioni:
+        return {"duplicato": False}
+    filtro["$or"] = condizioni
+    doc = await db.clienti.find_one(filtro)
+    if not doc:
+        return {"duplicato": False}
+    if escludi_id and str(doc["_id"]) == escludi_id:
+        return {"duplicato": False}
+    return {
+        "duplicato": True,
+        "cliente": {
+            "id": str(doc["_id"]),
+            "codice_cliente": doc.get("codice_cliente", ""),
+            "ragione_sociale": doc.get("ragione_sociale", ""),
+        }
+    }
+
+
 @router.post("/", response_model=ClienteResponse, status_code=status.HTTP_201_CREATED)
 async def crea_cliente(cliente: ClienteCreate):
     now = datetime.now(timezone.utc)

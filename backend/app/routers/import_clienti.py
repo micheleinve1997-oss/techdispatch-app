@@ -179,6 +179,21 @@ async def import_clienti(file: UploadFile = File(...), mapping: str = Form(defau
                 results["saltati"] += 1
                 continue
 
+            # Controllo duplicati P.IVA / CF
+            piva = data.get("partita_iva", "")
+            cf = data.get("codice_fiscale", "")
+            if piva or cf:
+                cond = []
+                if piva: cond.append({"partita_iva": piva})
+                if cf: cond.append({"codice_fiscale": cf})
+                esistente = await db.clienti.find_one({"$or": cond, "attivo": True})
+                if esistente:
+                    results["saltati"] += 1
+                    results["errori"].append(
+                        f"Riga {idx + 2}: '{data['ragione_sociale']}' già presente come '{esistente.get('ragione_sociale')}' ({esistente.get('codice_cliente')})"
+                    )
+                    continue
+
             # Struttura completa
             doc = {
                 "ragione_sociale": data.get("ragione_sociale", ""),
