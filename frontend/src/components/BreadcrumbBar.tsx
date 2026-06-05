@@ -1,4 +1,4 @@
-﻿import { Link, useLocation, useParams } from 'react-router-dom'
+﻿import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Home } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
@@ -13,9 +13,9 @@ function CrumbLink({ to, children }: { to: string; children: React.ReactNode }) 
 
 export default function BreadcrumbBar() {
   const location = useLocation()
-  const params = useParams()
-  const clienteId = params.id
-  const isClienteDetail = location.pathname.startsWith('/clienti/') && clienteId && clienteId !== 'nuovo'
+  const clienteMatch = location.pathname.match(/^\/clienti\/([^/]+)/)
+  const clienteId = clienteMatch?.[1]
+  const isClienteDetail = Boolean(clienteId && clienteId !== 'nuovo')
 
   const { data: cliente } = useQuery({
     queryKey: ['cliente', clienteId],
@@ -69,4 +69,6 @@ export default function BreadcrumbBar() {
     </div>
   )
 }
+
+
 
