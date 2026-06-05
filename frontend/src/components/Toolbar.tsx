@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-  Search, FilePlus, Save, RotateCcw, Printer, Trash2
+  Search, FilePlus, Save, RotateCcw, Printer, Trash2, Pencil
 } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
 import { useToolbar } from '../context/ToolbarContext'
@@ -144,24 +144,36 @@ export default function Toolbar() {
         <span>Nuovo</span>
       </TBtn>
 
-      <TBtn
-        title="Salva"
-        onClick={actions.onSave}
-        disabled={!actions.onSave || !actions.canSave || actions.isSaving}
-        variant="primary"
-      >
-        <Save size={18} />
-        <span>{actions.isSaving ? '...' : 'Salva'}</span>
-      </TBtn>
+      {/* Modifica — visibile solo in modalità visualizzazione */}
+      {actions.canEdit && !actions.editMode && (
+        <TBtn title="Modifica" onClick={actions.onEdit} variant="primary">
+          <Pencil size={18} />
+          <span>Modifica</span>
+        </TBtn>
+      )}
 
-      <TBtn
-        title="Annulla modifiche"
-        onClick={actions.onReset}
-        disabled={!actions.onReset || !actions.canReset}
-      >
-        <RotateCcw size={18} />
-        <span>Annulla</span>
-      </TBtn>
+      {/* Salva e Annulla — visibili solo in modalità modifica */}
+      {actions.editMode && (
+        <>
+          <TBtn
+            title="Salva"
+            onClick={actions.onSave}
+            disabled={!actions.canSave || actions.isSaving}
+            variant="primary"
+          >
+            <Save size={18} />
+            <span>{actions.isSaving ? '...' : 'Salva'}</span>
+          </TBtn>
+          <TBtn
+            title="Annulla modifiche"
+            onClick={actions.onReset}
+            disabled={!actions.canReset}
+          >
+            <RotateCcw size={18} />
+            <span>Annulla</span>
+          </TBtn>
+        </>
+      )}
 
       <Divider />
 

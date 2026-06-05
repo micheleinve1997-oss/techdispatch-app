@@ -4,10 +4,13 @@ interface ToolbarActions {
   onSave?: () => void
   onDelete?: () => void
   onReset?: () => void
+  onEdit?: () => void
   canSave?: boolean
   canDelete?: boolean
   canReset?: boolean
+  canEdit?: boolean
   isSaving?: boolean
+  editMode?: boolean
 }
 
 interface ToolbarCtx {
