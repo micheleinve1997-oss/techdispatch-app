@@ -143,7 +143,9 @@ async def import_clienti(file: UploadFile = File(...), mapping: str = ""):
 
     # Parsing mapping JSON
     try:
-        col_map: Dict[str, str] = json.loads(mapping) if mapping else {}
+        raw_map: Dict[str, str] = json.loads(mapping) if mapping else {}
+        # Filtra colonne senza campo assegnato
+        col_map = {k: v for k, v in raw_map.items() if v and v.strip()}
     except Exception:
         col_map = {}
 
