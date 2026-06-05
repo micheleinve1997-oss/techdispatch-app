@@ -30,6 +30,7 @@ async function geocodeCliente(c: Cliente): Promise<{ lat: number; lng: number } 
   const queries = [
     [sl.indirizzo, sl.cap, sl.citta, 'Italia'].filter(Boolean).join(', '),
     [sl.citta, sl.provincia, 'Italia'].filter(Boolean).join(', '),
+    [sl.cap, 'Italia'].filter(Boolean).join(', '),
   ]
   for (const q of queries) {
     try {
@@ -58,7 +59,9 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
   const [progress, setProgress] = useState(0)
   const [geocoded, setGeocoded] = useState(false)
 
-  const conSede = clienti.filter(c => c.sede_legale?.citta)
+  const conSede = clienti.filter(c =>
+    c.sede_legale?.citta || c.sede_legale?.indirizzo || c.sede_legale?.cap
+  )
 
   // Inizializza la mappa solo quando il div è visibile e ha dimensioni reali
   useEffect(() => {
