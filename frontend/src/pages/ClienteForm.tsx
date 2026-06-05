@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react'
+import {
+  ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
+  FilePlus, Save, Trash2, RotateCcw, Search, Printer
+} from 'lucide-react'
 import { clientiApi, type ClienteCreate, type Contatto } from '../api/clienti'
 import StatoBadge from '../components/StatoBadge'
 import DuplicatoAlert from '../components/DuplicatoAlert'
 import { SkeletonForm } from '../components/Skeleton'
 
 const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
-
 const SEZIONI = ['Anagrafica', 'Sede Legale', 'Fatturazione', 'Contatti', 'Pagamento', 'Note']
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -53,6 +55,34 @@ const emptyForm = (): ClienteCreate => ({
   note: '',
 })
 
+// Bottone toolbar
+function TBtn({
+  onClick, disabled, title, children, variant = 'default'
+}: {
+  onClick?: () => void
+  disabled?: boolean
+  title: string
+  children: React.ReactNode
+  variant?: 'default' | 'danger' | 'primary'
+}) {
+  const base = 'flex flex-col items-center justify-center gap-0.5 px-3 py-1.5 rounded text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed min-w-[44px]'
+  const variants = {
+    default: 'text-slate-600 hover:bg-slate-200 hover:text-slate-900',
+    danger:  'text-red-600 hover:bg-red-100 hover:text-red-700',
+    primary: 'text-blue-600 hover:bg-blue-100 hover:text-blue-700',
+  }
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      className={`${base} ${variants[variant]}`}>
+      {children}
+    </button>
+  )
+}
+
+function Divider() {
+  return <div className="w-px h-8 bg-slate-300 mx-1" />
+}
+
 export default function ClienteForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -60,13 +90,34 @@ export default function ClienteForm() {
   const isNew = id === 'nuovo'
   const [sezione, setSezione] = useState(0)
   const [form, setForm] = useState<ClienteCreate>(emptyForm())
-  const [duplicato, setDuplicato] = useState<{cliente: {id:string;codice_cliente:string;ragione_sociale:string};campo:string} | null>(null)
+  const [formDirty, setFormDirty] = useState(false)
+  const [duplicato, setDuplicato] = useState<{ cliente: { id: string; codice_cliente: string; ragione_sociale: string }; campo: string } | null>(null)
+  const [cercaOpen, setCercaOpen] = useState(false)
+  const [cercaQ, setCercaQ] = useState('')
+
+  // Lista clienti per navigazione
+  const { data: listaClienti = [] } = useQuery({
+    queryKey: ['clienti'],
+    queryFn: () => clientiApi.list(),
+  })
 
   const { data: cliente, isLoading } = useQuery({
     queryKey: ['cliente', id],
     queryFn: () => clientiApi.get(id!),
     enabled: !isNew,
   })
+
+  // Posizione corrente nella lista
+  const currentIndex = listaClienti.findIndex(c => c.id === id)
+  const total = listaClienti.length
+  const hasPrev = currentIndex > 0
+  const hasNext = currentIndex < total - 1 && currentIndex !== -1
+
+  const navTo = (idx: number) => {
+    if (idx >= 0 && idx < listaClienti.length) {
+      navigate(`/clienti/${listaClienti[idx].id}`)
+    }
+  }
 
   useEffect(() => {
     if (cliente) {
@@ -80,6 +131,7 @@ export default function ClienteForm() {
         pagamento: cliente.pagamento ?? emptyForm().pagamento,
         note: cliente.note ?? '',
       })
+      setFormDirty(false)
     }
   }, [cliente])
 
@@ -102,12 +154,22 @@ export default function ClienteForm() {
     mutationFn: () => isNew ? clientiApi.create(form) : clientiApi.update(id!, form),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['clienti'] })
+      setFormDirty(false)
       if (isNew) navigate(`/clienti/${data.id}`, { replace: true })
       else qc.invalidateQueries({ queryKey: ['cliente', id] })
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => clientiApi.delete(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clienti'] })
+      navigate('/clienti')
+    },
+  })
+
   const set = (path: string, value: unknown) => {
+    setFormDirty(true)
     setForm(prev => {
       const next = { ...prev }
       const parts = path.split('.')
@@ -121,18 +183,43 @@ export default function ClienteForm() {
     })
   }
 
-  const addContatto = () =>
+  const resetForm = () => {
+    if (cliente) {
+      setForm({
+        ragione_sociale: cliente.ragione_sociale ?? '',
+        codice_fiscale: cliente.codice_fiscale ?? '',
+        partita_iva: cliente.partita_iva ?? '',
+        sede_legale: cliente.sede_legale ?? emptyForm().sede_legale,
+        fatturazione_elettronica: cliente.fatturazione_elettronica ?? emptyForm().fatturazione_elettronica,
+        contatti: cliente.contatti ?? [],
+        pagamento: cliente.pagamento ?? emptyForm().pagamento,
+        note: cliente.note ?? '',
+      })
+      setFormDirty(false)
+    }
+  }
+
+  const addContatto = () => {
+    setFormDirty(true)
     setForm(p => ({ ...p, contatti: [...(p.contatti ?? []), { ruolo: 'manutenzione', nome: '', telefono: '', email: '' }] }))
-
-  const removeContatto = (i: number) =>
+  }
+  const removeContatto = (i: number) => {
+    setFormDirty(true)
     setForm(p => ({ ...p, contatti: p.contatti?.filter((_, idx) => idx !== i) }))
-
-  const setContatto = (i: number, field: keyof Contatto, value: string) =>
+  }
+  const setContatto = (i: number, field: keyof Contatto, value: string) => {
+    setFormDirty(true)
     setForm(p => {
       const contatti = [...(p.contatti ?? [])]
       contatti[i] = { ...contatti[i], [field]: value }
       return { ...p, contatti }
     })
+  }
+
+  const clientiFiltrati = listaClienti.filter(c =>
+    c.ragione_sociale.toLowerCase().includes(cercaQ.toLowerCase()) ||
+    c.codice_cliente.toLowerCase().includes(cercaQ.toLowerCase())
+  )
 
   if (isLoading) return (
     <div className="p-8 max-w-2xl">
@@ -143,33 +230,136 @@ export default function ClienteForm() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-8 py-5 border-b border-slate-200 bg-white flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/clienti')} className="p-1.5 hover:bg-slate-100 rounded-lg transition">
-            <ArrowLeft size={18} className="text-slate-500" />
-          </button>
-          <div>
-            <h1 className="text-base font-semibold text-slate-900">
-              {isNew ? 'Nuovo cliente' : (cliente?.ragione_sociale ?? '...')}
-            </h1>
-            {!isNew && cliente && (
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-slate-400">{cliente.codice_cliente}</span>
-                <StatoBadge stato={cliente.stato} />
+
+      {/* TOOLBAR */}
+      <div className="bg-slate-100 border-b border-slate-300 px-3 py-1 flex items-center gap-0.5">
+
+        {/* Navigazione record */}
+        <TBtn title="Primo cliente" onClick={() => navTo(0)} disabled={!hasPrev || isNew}>
+          <ChevronsLeft size={18} />
+          <span>Primo</span>
+        </TBtn>
+        <TBtn title="Cliente precedente" onClick={() => navTo(currentIndex - 1)} disabled={!hasPrev || isNew}>
+          <ChevronLeft size={18} />
+          <span>Prec.</span>
+        </TBtn>
+        <TBtn title="Cliente successivo" onClick={() => navTo(currentIndex + 1)} disabled={!hasNext || isNew}>
+          <ChevronRight size={18} />
+          <span>Succ.</span>
+        </TBtn>
+        <TBtn title="Ultimo cliente" onClick={() => navTo(total - 1)} disabled={!hasNext || isNew}>
+          <ChevronsRight size={18} />
+          <span>Ultimo</span>
+        </TBtn>
+
+        {/* Contatore */}
+        {!isNew && currentIndex !== -1 && (
+          <span className="text-xs text-slate-500 px-2 font-mono">
+            {currentIndex + 1} / {total}
+          </span>
+        )}
+
+        <Divider />
+
+        {/* Cerca */}
+        <div className="relative">
+          <TBtn title="Cerca cliente" onClick={() => { setCercaOpen(o => !o); setCercaQ('') }}>
+            <Search size={18} />
+            <span>Cerca</span>
+          </TBtn>
+          {cercaOpen && (
+            <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="p-2 border-b border-slate-100">
+                <input
+                  autoFocus
+                  type="text"
+                  value={cercaQ}
+                  onChange={e => setCercaQ(e.target.value)}
+                  placeholder="Nome o codice..."
+                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
               </div>
-            )}
-          </div>
+              <div className="max-h-56 overflow-y-auto">
+                {clientiFiltrati.slice(0, 20).map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => { navigate(`/clienti/${c.id}`); setCercaOpen(false) }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 transition"
+                  >
+                    <p className="text-sm font-medium text-slate-800">{c.ragione_sociale}</p>
+                    <p className="text-xs text-slate-400">{c.codice_cliente}</p>
+                  </button>
+                ))}
+                {clientiFiltrati.length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-4">Nessun risultato</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        <button
+        <Divider />
+
+        {/* Azioni */}
+        <TBtn title="Nuovo cliente" onClick={() => navigate('/clienti/nuovo')} variant="primary">
+          <FilePlus size={18} />
+          <span>Nuovo</span>
+        </TBtn>
+        <TBtn
+          title="Salva"
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending || !form.ragione_sociale}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          variant="primary"
         >
-          <Save size={15} />
-          {saveMutation.isPending ? 'Salvataggio...' : 'Salva'}
-        </button>
+          <Save size={18} />
+          <span>{saveMutation.isPending ? '...' : 'Salva'}</span>
+        </TBtn>
+        <TBtn
+          title="Annulla modifiche"
+          onClick={resetForm}
+          disabled={!formDirty || isNew}
+        >
+          <RotateCcw size={18} />
+          <span>Annulla</span>
+        </TBtn>
+
+        <Divider />
+
+        <TBtn title="Stampa" onClick={() => window.print()}>
+          <Printer size={18} />
+          <span>Stampa</span>
+        </TBtn>
+
+        <Divider />
+
+        <TBtn
+          title="Elimina cliente"
+          onClick={() => {
+            if (confirm(`Eliminare ${cliente?.ragione_sociale}?`)) deleteMutation.mutate()
+          }}
+          disabled={isNew || deleteMutation.isPending}
+          variant="danger"
+        >
+          <Trash2 size={18} />
+          <span>Elimina</span>
+        </TBtn>
+
+        <div className="flex-1" />
+
+        {/* Info cliente */}
+        {!isNew && cliente && (
+          <div className="flex items-center gap-2 pr-2">
+            <span className="text-xs text-slate-500 font-mono">{cliente.codice_cliente}</span>
+            <StatoBadge stato={cliente.stato} />
+          </div>
+        )}
+      </div>
+
+      {/* Titolo */}
+      <div className="px-8 py-3 border-b border-slate-200 bg-white">
+        <h1 className="text-base font-semibold text-slate-900">
+          {isNew ? 'Nuovo cliente' : (cliente?.ragione_sociale ?? '...')}
+        </h1>
       </div>
 
       {/* Tabs sezioni */}
@@ -274,14 +464,12 @@ export default function ClienteForm() {
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-slate-600">Contatti aziendali</p>
                 <button onClick={addContatto} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
-                  <Plus size={14} /> Aggiungi contatto
+                  + Aggiungi contatto
                 </button>
               </div>
-
               {(form.contatti ?? []).length === 0 && (
                 <p className="text-sm text-slate-400 py-4 text-center">Nessun contatto aggiunto</p>
               )}
-
               {(form.contatti ?? []).map((c, i) => (
                 <div key={i} className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50/50">
                   <div className="flex items-center justify-between">
