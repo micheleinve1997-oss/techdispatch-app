@@ -7,7 +7,7 @@ app = FastAPI(title="TechDispatch API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://*.vercel.app"],
+    allow_origins=["http://localhost:5173", "https://techdispatch-frontend.vercel.app", "https://techdispatch-app.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
