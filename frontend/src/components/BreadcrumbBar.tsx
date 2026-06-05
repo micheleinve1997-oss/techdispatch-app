@@ -48,7 +48,7 @@ export default function BreadcrumbBar() {
   }
 
   return (
-    <div className="h-9 shrink-0 border-b border-slate-200 bg-white px-4 flex items-center gap-2 text-xs font-medium">
+    <div className="w-full h-9 shrink-0 border-b border-slate-200 bg-white px-4 flex items-center gap-2 text-xs font-medium">
       <CrumbLink to="/clienti">
         <span className="inline-flex items-center gap-1.5">
           <Home size={13} /> TechDispatch
@@ -69,3 +69,4 @@ export default function BreadcrumbBar() {
     </div>
   )
 }
+

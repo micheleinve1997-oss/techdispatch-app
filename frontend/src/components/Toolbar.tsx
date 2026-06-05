@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -71,7 +71,7 @@ export default function Toolbar() {
   )
 
   return (
-    <div className="bg-slate-100 border-b border-slate-300 px-3 py-1 flex items-center gap-0.5 shrink-0 z-10">
+    <div className="w-full bg-slate-100 border-b border-slate-300 px-3 py-1 flex items-center gap-0.5 shrink-0 z-10">
 
       {/* Navigazione */}
       <TBtn title="Primo" onClick={() => navTo(0)} disabled={!hasPrev}>
@@ -144,7 +144,7 @@ export default function Toolbar() {
         <span>Nuovo</span>
       </TBtn>
 
-      {/* Modifica — visibile solo in modalità visualizzazione */}
+      {/* Modifica â€” visibile solo in modalitÃ  visualizzazione */}
       {actions.canEdit && !actions.editMode && (
         <TBtn title="Modifica" onClick={actions.onEdit} variant="primary">
           <Pencil size={18} />
@@ -152,7 +152,7 @@ export default function Toolbar() {
         </TBtn>
       )}
 
-      {/* Salva e Annulla — visibili solo in modalità modifica */}
+      {/* Salva e Annulla â€” visibili solo in modalitÃ  modifica */}
       {actions.editMode && (
         <>
           <TBtn
@@ -196,3 +196,4 @@ export default function Toolbar() {
     </div>
   )
 }
+

@@ -14,12 +14,12 @@ export default function App() {
 
   return (
     <ToolbarProvider>
-      <div className="flex h-screen bg-slate-50">
+      <div className="flex h-screen w-full min-w-0 bg-slate-50">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 w-full min-w-0 flex flex-col overflow-hidden">
           <BreadcrumbBar />
           <Toolbar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 w-full min-w-0 overflow-auto">
             <Routes>
               <Route path="/" element={<Navigate to="/clienti" replace />} />
               <Route path="/clienti" element={<Clienti />} />
@@ -37,4 +37,5 @@ export default function App() {
     </ToolbarProvider>
   )
 }
+
 
