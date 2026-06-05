@@ -14,11 +14,11 @@ const SEZIONI = ['Anagrafica', 'Sede Legale', 'Fatturazione', 'Contatti', 'Pagam
 // Campo in sola lettura
 function ReadField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="border-b border-slate-100 px-0 py-4 min-h-[76px]">
-      <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{label}</p>
-      <p className="text-sm text-slate-900 leading-5 break-words">
+    <div>
+      <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">{label}</p>
+      <div className="w-full min-h-[46px] px-4 py-3 text-sm border border-slate-200 rounded-lg bg-slate-50 text-slate-900 flex items-center">
         {value || <span className="text-slate-300 italic">-</span>}
-      </p>
+      </div>
     </div>
   )
 }
@@ -415,5 +415,6 @@ export default function ClienteForm() {
     </div>
   )
 }
+
 
 
