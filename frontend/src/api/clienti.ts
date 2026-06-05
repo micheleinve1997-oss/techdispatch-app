@@ -1,8 +1,7 @@
-import axios from 'axios'
+﻿import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
+const API_ORIGIN = import.meta.env.VITE_API_URL || 'https://techdispatch-api.onrender.com'
+const baseURL = `${API_ORIGIN}/api`
 
 const api = axios.create({ baseURL })
 
@@ -73,3 +72,4 @@ export const clientiApi = {
   delete: (id: string) =>
     api.delete(`/clienti/${id}`),
 }
+
