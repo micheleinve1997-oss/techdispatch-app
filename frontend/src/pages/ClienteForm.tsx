@@ -14,10 +14,10 @@ const SEZIONI = ['Anagrafica', 'Sede Legale', 'Fatturazione', 'Contatti', 'Pagam
 // Campo in sola lettura
 function ReadField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div>
-      <p className="text-xs font-medium text-slate-400 mb-1">{label}</p>
-      <p className="text-sm text-slate-800 py-1.5 min-h-[34px]">
-        {value || <span className="text-slate-300 italic">â€”</span>}
+    <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 min-h-[76px]">
+      <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-slate-900 leading-5 break-words">
+        {value || <span className="text-slate-300 italic">-</span>}
       </p>
     </div>
   )
@@ -27,7 +27,7 @@ function ReadField({ label, value }: { label: string; value?: string | null }) {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-1.5">
+      <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
@@ -38,14 +38,14 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input {...props}
-      className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition placeholder:text-slate-300"
+      className="w-full px-4 py-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition placeholder:text-slate-300"
     />
   )
 }
 
 function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select {...props} className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition">
+    <select {...props} className="w-full px-4 py-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition">
       {children}
     </select>
   )
@@ -188,15 +188,15 @@ export default function ClienteForm() {
   }
 
   if (isLoading) return (
-    <div className="p-8 max-w-2xl"><div className="h-6 bg-slate-200 rounded w-40 mb-6 animate-pulse" /><SkeletonForm /></div>
+    <div className="p-10 w-full max-w-none"><div className="h-6 bg-slate-200 rounded w-40 mb-6 animate-pulse" /><SkeletonForm /></div>
   )
 
   return (
     <div className="flex flex-col h-full">
       {/* Intestazione */}
-      <div className="px-8 py-4 border-b border-slate-200 bg-white flex items-center justify-between gap-6">
+      <div className="px-10 py-5 border-b border-slate-200 bg-white flex items-center justify-between gap-8">
         <div>
-          <h1 className="text-base font-semibold text-slate-900">
+          <h1 className="text-xl font-semibold text-slate-900">
             {isNew ? 'Nuovo cliente' : (cliente?.ragione_sociale ?? '...')}
           </h1>
           {editMode && !isNew && (
@@ -223,8 +223,8 @@ export default function ClienteForm() {
       </div>
 
       {/* Tab sezioni */}
-      <div className="px-8 border-b border-slate-200 bg-white">
-        <div className="flex overflow-x-auto">
+      <div className="px-10 border-b border-slate-200 bg-white">
+        <div className="flex gap-2 overflow-x-auto">
           {SEZIONI.map((s, i) => (
             <button key={s} onClick={() => setSezione(i)}
               className={`px-4 py-3 text-sm font-medium border-b-2 rounded-t-lg transition-colors whitespace-nowrap ${
@@ -237,8 +237,8 @@ export default function ClienteForm() {
       </div>
 
       {/* Contenuto */}
-      <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-2xl">
+      <div className="flex-1 overflow-auto bg-slate-50 px-10 py-8">
+        <div className="w-full max-w-none min-h-[calc(100vh-260px)] rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
 
           {/* SEZIONE 0 â€” Anagrafica */}
           {sezione === 0 && (
@@ -248,7 +248,7 @@ export default function ClienteForm() {
                   <Field label="Ragione Sociale" required>
                     <Input value={form.ragione_sociale} onChange={e => set('ragione_sociale', e.target.value)} placeholder="Es. Rossi SpA" />
                   </Field>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <Field label="Codice Fiscale">
                       <Input value={form.codice_fiscale ?? ''} onChange={e => set('codice_fiscale', e.target.value)} onBlur={e => checkDuplicato('codice_fiscale', e.target.value)} placeholder="12345678901" />
                     </Field>
@@ -259,9 +259,8 @@ export default function ClienteForm() {
                   {duplicato && <DuplicatoAlert cliente={duplicato.cliente} campo={duplicato.campo} onClose={() => setDuplicato(null)} />}
                 </>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                   <ReadField label="Ragione Sociale" value={form.ragione_sociale} />
-                  <div />
                   <ReadField label="Codice Fiscale" value={form.codice_fiscale} />
                   <ReadField label="Partita IVA" value={form.partita_iva} />
                 </div>
@@ -274,19 +273,19 @@ export default function ClienteForm() {
             editMode ? (
               <div className="space-y-5">
                 <Field label="Indirizzo"><Input value={form.sede_legale?.indirizzo ?? ''} onChange={e => set('sede_legale.indirizzo', e.target.value)} placeholder="Via Roma 1" /></Field>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Field label="CAP"><Input value={form.sede_legale?.cap ?? ''} onChange={e => set('sede_legale.cap', e.target.value)} placeholder="20100" maxLength={5} /></Field>
                   <Field label="CittÃ "><Input value={form.sede_legale?.citta ?? ''} onChange={e => set('sede_legale.citta', e.target.value)} placeholder="Milano" /></Field>
                   <Field label="Provincia"><Input value={form.sede_legale?.provincia ?? ''} onChange={e => set('sede_legale.provincia', e.target.value)} placeholder="MI" maxLength={2} /></Field>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <Field label="Telefono"><Input value={form.sede_legale?.telefono ?? ''} onChange={e => set('sede_legale.telefono', e.target.value)} placeholder="+39 02 1234567" /></Field>
                   <Field label="Email"><Input type="email" value={form.sede_legale?.email ?? ''} onChange={e => set('sede_legale.email', e.target.value)} placeholder="info@azienda.it" /></Field>
                 </div>
                 <Field label="PEC"><Input value={form.sede_legale?.pec ?? ''} onChange={e => set('sede_legale.pec', e.target.value)} placeholder="pec@azienda.it" /></Field>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                 <ReadField label="Indirizzo" value={form.sede_legale?.indirizzo} />
                 <ReadField label="CAP / CittÃ  / Provincia" value={[form.sede_legale?.cap, form.sede_legale?.citta, form.sede_legale?.provincia].filter(Boolean).join(' Â· ')} />
                 <ReadField label="Telefono" value={form.sede_legale?.telefono} />
@@ -305,7 +304,7 @@ export default function ClienteForm() {
                 <p className="text-xs text-slate-400">Almeno uno tra Codice SDI e PEC FE Ã¨ richiesto per fatturare.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                 <ReadField label="Codice SDI" value={form.fatturazione_elettronica?.codice_sdi} />
                 <ReadField label="PEC Fatturazione" value={form.fatturazione_elettronica?.pec_fe} />
               </div>
@@ -336,14 +335,14 @@ export default function ClienteForm() {
                         </Select>
                         <button onClick={() => removeContatto(i)} className="p-1.5 text-slate-400 hover:text-red-500 rounded"><Trash2 size={14} /></button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Field label="Nome"><Input value={c.nome} onChange={e => setContatto(i, 'nome', e.target.value)} /></Field>
                         <Field label="Telefono"><Input value={c.telefono ?? ''} onChange={e => setContatto(i, 'telefono', e.target.value)} /></Field>
                         <Field label="Email"><Input value={c.email ?? ''} onChange={e => setContatto(i, 'email', e.target.value)} /></Field>
                       </div>
                     </>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                       <ReadField label="Ruolo" value={c.ruolo} />
                       <ReadField label="Nome" value={c.nome} />
                       <ReadField label="Telefono" value={c.telefono} />
@@ -359,7 +358,7 @@ export default function ClienteForm() {
           {sezione === 4 && (
             editMode ? (
               <div className="space-y-5">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <Field label="Metodo di pagamento">
                     <Select value={form.pagamento?.metodo ?? ''} onChange={e => set('pagamento.metodo', e.target.value || undefined)}>
                       <option value="">â€” Seleziona â€”</option>
@@ -380,7 +379,7 @@ export default function ClienteForm() {
                   </Field>
                 </div>
                 <Field label="Istituto di credito"><Input value={form.pagamento?.istituto ?? ''} onChange={e => set('pagamento.istituto', e.target.value)} /></Field>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Field label="ABI"><Input value={form.pagamento?.abi ?? ''} onChange={e => set('pagamento.abi', e.target.value)} /></Field>
                   <Field label="CAB"><Input value={form.pagamento?.cab ?? ''} onChange={e => set('pagamento.cab', e.target.value)} /></Field>
                   <Field label="C/C"><Input value={form.pagamento?.cc ?? ''} onChange={e => set('pagamento.cc', e.target.value)} /></Field>
@@ -388,7 +387,7 @@ export default function ClienteForm() {
                 <Field label="IBAN"><Input value={form.pagamento?.iban ?? ''} onChange={e => set('pagamento.iban', e.target.value)} /></Field>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                 <ReadField label="Metodo pagamento" value={form.pagamento?.metodo} />
                 <ReadField label="Condizioni" value={form.pagamento?.condizioni} />
                 <ReadField label="Istituto" value={form.pagamento?.istituto} />
@@ -404,7 +403,7 @@ export default function ClienteForm() {
             editMode ? (
               <Field label="Note interne">
                 <textarea value={form.note ?? ''} onChange={e => set('note', e.target.value)} rows={6} placeholder="Note interne sul cliente..."
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition resize-none placeholder:text-slate-300" />
+                  className="w-full px-4 py-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition resize-none placeholder:text-slate-300" />
               </Field>
             ) : (
               <ReadField label="Note interne" value={form.note} />
