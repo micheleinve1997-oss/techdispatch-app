@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import Clienti from './pages/Clienti'
 import ClienteForm from './pages/ClienteForm'
 import ComingSoon from './pages/ComingSoon'
+import ImportClienti from './pages/ImportClienti'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/clienti" replace />} />
           <Route path="/clienti" element={<Clienti />} />
           <Route path="/clienti/:id" element={<ClienteForm />} />
+          <Route path="/clienti-import" element={<ImportClienti />} />
           <Route path="/tecnici" element={<ComingSoon titolo="Tecnici" />} />
           <Route path="/pianificatore" element={<ComingSoon titolo="Pianificatore" />} />
           <Route path="/ticket" element={<ComingSoon titolo="Ticket" />} />

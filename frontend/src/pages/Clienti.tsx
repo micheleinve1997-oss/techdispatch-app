@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, Trash2, Upload } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
 import StatoBadge from '../components/StatoBadge'
 import { SkeletonRow } from '../components/Skeleton'
@@ -35,13 +35,22 @@ export default function Clienti() {
             <h1 className="text-xl font-semibold text-slate-900">Clienti</h1>
             <p className="text-sm text-slate-500 mt-0.5">{clienti.length} clienti totali</p>
           </div>
-          <button
-            onClick={() => navigate('/clienti/nuovo')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            Nuovo cliente
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/clienti-import')}
+              className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <Upload size={16} />
+              Importa
+            </button>
+            <button
+              onClick={() => navigate('/clienti/nuovo')}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              Nuovo cliente
+            </button>
+          </div>
         </div>
 
         {/* Search */}
