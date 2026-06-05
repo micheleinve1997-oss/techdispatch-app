@@ -13,6 +13,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/clienti" replace />} />
           <Route path="/clienti" element={<Clienti />} />
+          <Route path="/clienti/nuovo" element={<ClienteForm />} />
           <Route path="/clienti/:id" element={<ClienteForm />} />
           <Route path="/clienti-import" element={<ImportClienti />} />
           <Route path="/tecnici" element={<ComingSoon titolo="Tecnici" />} />
