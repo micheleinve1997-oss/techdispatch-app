@@ -23,6 +23,20 @@ interface Props {
   isVisible: boolean
 }
 
+// --- Cache localStorage ---
+const GEO_KEY = 'td_geo_cache'
+
+function loadCache(): Record<string, { lat: number; lng: number }> {
+  try { return JSON.parse(localStorage.getItem(GEO_KEY) || '{}') } catch { return {} }
+}
+
+function saveCache(id: string, lat: number, lng: number) {
+  const cache = loadCache()
+  cache[id] = { lat, lng }
+  localStorage.setItem(GEO_KEY, JSON.stringify(cache))
+}
+// --------------------------
+
 async function geocodeCliente(c: Cliente): Promise<{ lat: number; lng: number } | null> {
   const sl = c.sede_legale
   if (!sl) return null
@@ -47,30 +61,49 @@ async function geocodeCliente(c: Cliente): Promise<{ lat: number; lng: number } 
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+function resolveGeo(clienti: Cliente[]): { geo: GeoCliente[]; senza: Cliente[] } {
+  const cache = loadCache()
+  const geo: GeoCliente[] = []
+  const senza: Cliente[] = []
+
+  for (const c of clienti) {
+    // 1. coordinate già nell'oggetto (dal DB via API)
+    if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+      geo.push(c as GeoCliente)
+      // aggiorna anche cache locale per coerenza
+      saveCache(c.id, c.lat, c.lng)
+      continue
+    }
+    // 2. coordinate in localStorage
+    const cached = cache[c.id]
+    if (cached) {
+      geo.push({ ...c, lat: cached.lat, lng: cached.lng })
+      continue
+    }
+    // 3. nessuna coordinata disponibile
+    const hasSede = c.sede_legale?.citta || c.sede_legale?.indirizzo || c.sede_legale?.cap
+    if (hasSede) senza.push(c)
+  }
+
+  return { geo, senza }
+}
+
 export default function MappaClienti({ clienti, isVisible }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
   const leafletMap = useRef<L.Map | null>(null)
   const markersRef = useRef<L.Marker[]>([])
   const navigate = useNavigate()
 
-  // Clienti con indirizzo sufficiente per geocoding
-  const conSede = clienti.filter(c =>
-    c.sede_legale?.citta || c.sede_legale?.indirizzo || c.sede_legale?.cap
-  )
+  const { geo: giaGeo, senza: daCodificare } = resolveGeo(clienti)
 
-  // Clienti già geocodificati (lat/lng salvati in DB)
-  const giaSalvati: GeoCliente[] = conSede.filter(
-    (c): c is GeoCliente => typeof c.lat === 'number' && typeof c.lng === 'number'
-  )
-
-  // Clienti che mancano ancora di coordinate
-  const daCodificare = conSede.filter(c => typeof c.lat !== 'number' || typeof c.lng !== 'number')
-
+  const [extraGeo, setExtraGeo] = useState<GeoCliente[]>([])
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [geoNuovi, setGeoNuovi] = useState<GeoCliente[]>([])
 
-  const tuttiGeo: GeoCliente[] = [...giaSalvati, ...geoNuovi]
+  const tuttiGeo: GeoCliente[] = [
+    ...giaGeo,
+    ...extraGeo.filter(e => !giaGeo.find(g => g.id === e.id)),
+  ]
 
   // Init mappa
   useEffect(() => {
@@ -78,6 +111,7 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
     if (!mapRef.current) return
     if (leafletMap.current) {
       setTimeout(() => leafletMap.current?.invalidateSize(), 50)
+      addMarkers(tuttiGeo)
       return
     }
     const init = () => {
@@ -89,18 +123,18 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(leafletMap.current)
-      if (giaSalvati.length > 0) addMarkers(giaSalvati)
+      if (tuttiGeo.length > 0) setTimeout(() => addMarkers(tuttiGeo), 100)
     }
     requestAnimationFrame(init)
     return () => { leafletMap.current?.remove(); leafletMap.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible])
 
-  // Aggiunge marker ogni volta che arrivano nuovi geocodificati
+  // Ridisegna marker quando cambiano i dati
   useEffect(() => {
-    if (tuttiGeo.length > 0) setTimeout(() => addMarkers(tuttiGeo), 50)
+    if (leafletMap.current && tuttiGeo.length > 0) addMarkers(tuttiGeo)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geoNuovi, giaSalvati.length])
+  }, [tuttiGeo.length])
 
   const addMarkers = (list: GeoCliente[]) => {
     const map = leafletMap.current
@@ -142,16 +176,20 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
       const c = daCodificare[i]
       const coords = await geocodeCliente(c)
       if (coords) {
-        const geo = { ...c, ...coords }
-        nuovi.push(geo)
+        saveCache(c.id, coords.lat, coords.lng)
         clientiApi.saveGeo(c.id, coords.lat, coords.lng).catch(() => {})
+        nuovi.push({ ...c, lat: coords.lat, lng: coords.lng })
       }
       setProgress(i + 1)
       if (i < daCodificare.length - 1) await sleep(1200)
     }
-    setGeoNuovi(nuovi)
+    setExtraGeo(prev => [...prev, ...nuovi])
     setLoading(false)
   }
+
+  const totaleConSede = clienti.filter(
+    c => c.sede_legale?.citta || c.sede_legale?.indirizzo || c.sede_legale?.cap
+  ).length
 
   return (
     <div className="flex flex-col" style={{ height: '100%' }}>
@@ -160,7 +198,7 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <MapPin size={15} className="text-blue-500" />
           <span>
-            {tuttiGeo.length} di {conSede.length} clienti sulla mappa
+            {tuttiGeo.length} di {totaleConSede} clienti sulla mappa
             {daCodificare.length > 0 && !loading && (
               <span className="ml-1 text-amber-600">· {daCodificare.length} senza coordinate</span>
             )}
@@ -191,7 +229,7 @@ export default function MappaClienti({ clienti, isVisible }: Props) {
         )}
       </div>
 
-      {conSede.length === 0 && (
+      {totaleConSede === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400">
           <AlertCircle size={36} />
           <p className="text-sm">Nessun cliente ha un indirizzo configurato.</p>
