@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Users, Wrench, Calendar, FileText, Settings, Zap, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Users, Wrench, Calendar, ClipboardList, Settings, Zap, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const nav = [
   { to: '/clienti', icon: Users, label: 'Clienti' },
   { to: '/tecnici', icon: Wrench, label: 'Tecnici' },
+  { to: '/interventi', icon: ClipboardList, label: 'Interventi' },
   { to: '/pianificatore', icon: Calendar, label: 'Pianificatore' },
-  { to: '/ticket', icon: FileText, label: 'Ticket' },
   { to: '/impostazioni', icon: Settings, label: 'Impostazioni' },
 ]
 
