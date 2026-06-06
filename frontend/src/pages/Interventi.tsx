@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CalendarClock, ClipboardList, FileCheck2, FileText, Search, ShieldAlert, Ticket, Wrench } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CalendarClock, ClipboardList, FileCheck2, FileText, Search, ShieldAlert, Ticket, Upload, Wrench } from 'lucide-react'
 import { interventiApi, type Intervento, type OrigineIntervento, type PrioritaIntervento, type StatoIntervento } from '../api/interventi'
 
 const STATO_LABEL: Record<StatoIntervento, string> = {
@@ -57,6 +58,7 @@ function matchesSearch(intervento: Intervento, search: string) {
     intervento.codice_intervento,
     intervento.titolo,
     intervento.cliente_nome,
+    intervento.cliente_codice,
     intervento.tecnico_nome,
     intervento.citta,
     intervento.riferimento_esterno,
@@ -67,6 +69,7 @@ export default function Interventi() {
   const [search, setSearch] = useState('')
   const [origine, setOrigine] = useState<FiltroOrigine>('TUTTI')
   const [stato, setStato] = useState<FiltroStato>('TUTTI')
+  const navigate = useNavigate()
 
   const { data: interventi = [], isLoading } = useQuery({
     queryKey: ['interventi'],
@@ -93,6 +96,13 @@ export default function Interventi() {
               Ticket, manutenzioni e preventivi accettati in un unico flusso operativo
             </p>
           </div>
+          <button
+            onClick={() => navigate('/interventi-import')}
+            className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+          >
+            <Upload size={16} />
+            Importa
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">

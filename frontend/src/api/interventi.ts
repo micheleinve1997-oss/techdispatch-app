@@ -17,6 +17,7 @@ export interface Intervento {
   stato: StatoIntervento
   priorita: PrioritaIntervento
   cliente_id?: string
+  cliente_codice?: string
   cliente_nome?: string
   tecnico_id?: string
   tecnico_nome?: string
