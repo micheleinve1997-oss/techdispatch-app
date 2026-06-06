@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Wrench, MapPin, Car, CreditCard, RefreshCw, AlertCircle } from 'lucide-react'
@@ -136,41 +136,36 @@ export default function TecnicoDetail() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['tecnici'] }); navigate('/tecnici') },
   })
 
-  const handleEdit = useCallback(() => setEditMode(true), [])
-  const handleReset = useCallback(() => {
-    if (tecnico) {
-      setForm({
-        nome: tecnico.nome, cognome: tecnico.cognome,
-        telefono: tecnico.telefono ?? '', email: tecnico.email ?? '',
-        specializzazioni: tecnico.specializzazioni ?? [],
-        sede_partenza: tecnico.sede_partenza ?? { tipo: 'ditta', indirizzo: '', cap: '', citta: '', provincia: '' },
-        patente: tecnico.patente, mezzo_proprio: tecnico.mezzo_proprio,
-        stato: tecnico.stato, note: tecnico.note ?? '',
-      })
-    }
-    setEditMode(false)
-  }, [tecnico])
-
-  const handleDelete = useCallback(() => {
-    if (confirm(`Eliminare ${tecnico?.cognome} ${tecnico?.nome}?`)) deleteMutation.mutate()
-  }, [tecnico, deleteMutation])
-
   useEffect(() => {
     if (isNew) return
     setActions({
       canEdit: !editMode,
       editMode,
-      onEdit: handleEdit,
+      onEdit: () => setEditMode(true),
       onSave: () => saveMutation.mutate(),
       canSave: Boolean(form.nome && form.cognome),
       isSaving: saveMutation.isPending,
-      onReset: handleReset,
+      onReset: () => {
+        if (tecnico) {
+          setForm({
+            nome: tecnico.nome, cognome: tecnico.cognome,
+            telefono: tecnico.telefono ?? '', email: tecnico.email ?? '',
+            specializzazioni: tecnico.specializzazioni ?? [],
+            sede_partenza: tecnico.sede_partenza ?? { tipo: 'ditta', indirizzo: '', cap: '', citta: '', provincia: '' },
+            patente: tecnico.patente, mezzo_proprio: tecnico.mezzo_proprio,
+            stato: tecnico.stato, note: tecnico.note ?? '',
+          })
+        }
+        setEditMode(false)
+      },
       canReset: true,
-      onDelete: handleDelete,
+      onDelete: () => {
+        if (confirm(`Eliminare ${tecnico?.cognome} ${tecnico?.nome}?`)) deleteMutation.mutate()
+      },
       canDelete: !editMode,
     })
-    return clearActions
-  }, [editMode, form.nome, form.cognome, saveMutation.isPending, isNew, setActions, clearActions, handleEdit, handleReset, handleDelete])
+    return () => clearActions()
+  }, [editMode, form.nome, form.cognome, saveMutation.isPending, isNew])
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-full">
