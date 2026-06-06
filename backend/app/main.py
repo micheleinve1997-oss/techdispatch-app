@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import clienti, import_clienti
+from app.routers import clienti, import_clienti, tecnici
 
 app = FastAPI(title="TechDispatch API", version="0.1.0")
 
@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(clienti.router)
 app.include_router(import_clienti.router)
+app.include_router(tecnici.router)
 
 
 @app.get("/health")

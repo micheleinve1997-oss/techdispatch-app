@@ -7,6 +7,8 @@ import Clienti from './pages/Clienti'
 import ClienteForm from './pages/ClienteForm'
 import ComingSoon from './pages/ComingSoon'
 import ImportClienti from './pages/ImportClienti'
+import Tecnici from './pages/Tecnici'
+import TecnicoDetail from './pages/TecnicoDetail'
 import { ToolbarProvider } from './context/ToolbarContext'
 
 export default function App() {
@@ -26,7 +28,9 @@ export default function App() {
               <Route path="/clienti/nuovo" element={<ClienteForm />} />
               <Route path="/clienti/:id" element={<ClienteForm />} />
               <Route path="/clienti-import" element={<ImportClienti />} />
-              <Route path="/tecnici" element={<ComingSoon titolo="Tecnici" />} />
+              <Route path="/tecnici" element={<Tecnici />} />
+              <Route path="/tecnici/nuovo" element={<TecnicoDetail />} />
+              <Route path="/tecnici/:id" element={<TecnicoDetail />} />
               <Route path="/pianificatore" element={<ComingSoon titolo="Pianificatore" />} />
               <Route path="/ticket" element={<ComingSoon titolo="Ticket" />} />
               <Route path="/impostazioni" element={<ComingSoon titolo="Impostazioni" />} />
