@@ -124,6 +124,19 @@ async def aggiorna_cliente(cliente_id: str, cliente: ClienteUpdate):
     return serialize(doc)
 
 
+@router.patch("/{cliente_id}/geo")
+async def salva_geo(cliente_id: str, body: dict):
+    lat = body.get("lat")
+    lng = body.get("lng")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat e lng obbligatori")
+    await db.clienti.update_one(
+        {"_id": ObjectId(cliente_id)},
+        {"$set": {"lat": lat, "lng": lng}}
+    )
+    return {"ok": True}
+
+
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def elimina_cliente(cliente_id: str):
     doc = await db.clienti.find_one({"_id": ObjectId(cliente_id)})

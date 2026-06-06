@@ -52,6 +52,8 @@ export interface Cliente {
   attivo: boolean
   created_at: string
   updated_at: string
+  lat?: number
+  lng?: number
 }
 
 export type ClienteCreate = Omit<Cliente, 'id' | 'codice_cliente' | 'stato' | 'attivo' | 'created_at' | 'updated_at'>
@@ -71,5 +73,8 @@ export const clientiApi = {
 
   delete: (id: string) =>
     api.delete(`/clienti/${id}`),
+
+  saveGeo: (id: string, lat: number, lng: number) =>
+    api.patch(`/clienti/${id}/geo`, { lat, lng }),
 }
 

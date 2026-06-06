@@ -78,3 +78,5 @@ class ClienteResponse(ClienteCreate):
     attivo: bool
     created_at: datetime
     updated_at: datetime
+    lat: Optional[float] = None
+    lng: Optional[float] = None
