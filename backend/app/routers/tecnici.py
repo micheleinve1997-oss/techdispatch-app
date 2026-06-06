@@ -70,8 +70,9 @@ class TecnicoResponse(TecnicoCreate):
 
 
 def serialize(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
-    return doc
+    d = dict(doc)
+    d["id"] = str(d.pop("_id"))
+    return d
 
 
 async def genera_codice_tecnico() -> str:
