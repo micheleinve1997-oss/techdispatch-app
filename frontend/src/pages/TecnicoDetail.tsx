@@ -94,9 +94,12 @@ export default function TecnicoDetail() {
       : tecniciApi.update(id!, form),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['tecnici'] })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      if (isNew) navigate(`/tecnici/${data.id}`, { replace: true })
+      if (isNew) {
+        navigate(data?.id ? `/tecnici/${data.id}` : '/tecnici', { replace: true })
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Errore salvataggio'

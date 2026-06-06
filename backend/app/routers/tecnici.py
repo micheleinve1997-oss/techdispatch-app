@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import Optional, List
 from datetime import datetime, timezone
-from bson import ObjectId
-from pydantic import BaseModel
+from bson import ObjectId, errors as bson_errors
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 
 from app.database import db
@@ -44,6 +44,7 @@ class SedePartenza(BaseModel):
 
 
 class TecnicoCreate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     nome: str
     cognome: str
     telefono: Optional[str] = None
@@ -102,15 +103,19 @@ async def lista_tecnici(stato: Optional[str] = None):
     return [serialize(t) for t in tecnici]
 
 
-@router.get("/{tecnico_id}", response_model=TecnicoResponse)
+@router.get("/{tecnico_id}")
 async def get_tecnico(tecnico_id: str):
-    doc = await db.tecnici.find_one({"_id": ObjectId(tecnico_id)})
+    try:
+        oid = ObjectId(tecnico_id)
+    except (bson_errors.InvalidId, Exception):
+        raise HTTPException(status_code=404, detail="Tecnico non trovato")
+    doc = await db.tecnici.find_one({"_id": oid})
     if not doc:
         raise HTTPException(status_code=404, detail="Tecnico non trovato")
     return serialize(doc)
 
 
-@router.post("/", response_model=TecnicoResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def crea_tecnico(tecnico: TecnicoCreate):
     now = datetime.now(timezone.utc)
     data = tecnico.model_dump()
@@ -123,7 +128,7 @@ async def crea_tecnico(tecnico: TecnicoCreate):
     return serialize(doc)
 
 
-@router.put("/{tecnico_id}", response_model=TecnicoResponse)
+@router.put("/{tecnico_id}")
 async def aggiorna_tecnico(tecnico_id: str, tecnico: TecnicoUpdate):
     doc = await db.tecnici.find_one({"_id": ObjectId(tecnico_id)})
     if not doc:
