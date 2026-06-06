@@ -43,7 +43,7 @@ function Input({ value, onChange, placeholder, type = 'text' }: {
 
 export default function TecnicoDetail() {
   const { id } = useParams<{ id: string }>()
-  const isNew = id === 'nuovo'
+  const isNew = !id || id === 'nuovo' || !/^[0-9a-f]{24}$/i.test(id)
   const navigate = useNavigate()
   const qc = useQueryClient()
 
