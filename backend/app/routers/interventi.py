@@ -58,6 +58,8 @@ class InterventoCreate(BaseModel):
     provincia: Optional[str] = None
     data_richiesta: Optional[datetime] = None
     data_pianificata: Optional[datetime] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     riferimento_esterno: Optional[str] = None
     note: Optional[str] = None
 
@@ -373,6 +375,8 @@ async def import_interventi(file: UploadFile = File(...), mapping: str = Form(de
                 "provincia": data.get("provincia") or sede.get("provincia"),
                 "data_richiesta": _parse_date(data.get("data_richiesta")),
                 "data_pianificata": _parse_date(data.get("data_pianificata")),
+                "lat": None,
+                "lng": None,
                 "riferimento_esterno": data.get("riferimento_esterno") or None,
                 "note": data.get("note") or None,
                 "codice_intervento": await genera_codice_intervento(),
@@ -430,6 +434,19 @@ async def aggiorna_stato(intervento_id: str, body: dict):
     await db.interventi.update_one(
         {"_id": to_object_id(intervento_id)},
         {"$set": {"stato": stato, "updated_at": datetime.now(timezone.utc)}}
+    )
+    return {"ok": True}
+
+
+@router.patch("/{intervento_id}/geo")
+async def salva_geo(intervento_id: str, body: dict):
+    lat = body.get("lat")
+    lng = body.get("lng")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat e lng obbligatori")
+    await db.interventi.update_one(
+        {"_id": to_object_id(intervento_id)},
+        {"$set": {"lat": lat, "lng": lng, "updated_at": datetime.now(timezone.utc)}}
     )
     return {"ok": True}
 

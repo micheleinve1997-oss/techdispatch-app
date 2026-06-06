@@ -27,6 +27,8 @@ export interface Intervento {
   provincia?: string
   data_richiesta?: string
   data_pianificata?: string
+  lat?: number
+  lng?: number
   riferimento_esterno?: string
   note?: string
   attivo: boolean
@@ -51,6 +53,9 @@ export const interventiApi = {
 
   updateStato: (id: string, stato: StatoIntervento) =>
     api.patch(`/interventi/${id}/stato`, { stato }),
+
+  saveGeo: (id: string, lat: number, lng: number) =>
+    api.patch(`/interventi/${id}/geo`, { lat, lng }),
 
   delete: (id: string) =>
     api.delete(`/interventi/${id}`),
