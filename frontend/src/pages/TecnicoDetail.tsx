@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Save, Wrench, MapPin, Phone, Mail, Car, CreditCard, RefreshCw, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Save, Wrench, MapPin, Car, CreditCard, RefreshCw, AlertCircle } from 'lucide-react'
 import { tecniciApi, SPECIALIZZAZIONI, type TecnicoCreate, type StatoTecnico, type TipoPartenza } from '../api/tecnici'
 
 const STATO_OPTIONS: { value: StatoTecnico; label: string }[] = [
