@@ -92,10 +92,10 @@ export default function TecnicoDetail() {
     mutationFn: () => isNew
       ? tecniciApi.create(form)
       : tecniciApi.update(id!, form),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       qc.invalidateQueries({ queryKey: ['tecnici'] })
       if (isNew) {
-        navigate('/tecnici', { replace: true })
+        window.location.href = saved?.id ? `/tecnici/${saved.id}` : '/tecnici'
       } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
