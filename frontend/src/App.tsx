@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Toolbar from './components/Toolbar'
@@ -43,5 +43,3 @@ export default function App() {
     </ToolbarProvider>
   )
 }
-
-
