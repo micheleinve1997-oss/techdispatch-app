@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserCheck, Trash2, Phone, Mail, Wrench, Upload } from 'lucide-react'
+import { Plus, Search, UserCheck, Trash2, Phone, Mail, Wrench, Upload, List, Map } from 'lucide-react'
 import { tecniciApi, type Tecnico, type StatoTecnico } from '../api/tecnici'
+import MappaTecnici from '../components/MappaTecnici'
+
+type Tab = 'lista' | 'mappa'
 
 const STATO_CFG: Record<StatoTecnico, { label: string; dot: string; text: string }> = {
   ATTIVO:           { label: 'Attivo',           dot: 'bg-emerald-500', text: 'text-emerald-700' },
@@ -24,6 +27,7 @@ function Iniziali({ nome, cognome }: { nome: string; cognome: string }) {
 
 export default function Tecnici() {
   const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<Tab>('lista')
   const navigate = useNavigate()
   const qc = useQueryClient()
 
@@ -73,102 +77,135 @@ export default function Tecnici() {
           </div>
         </div>
 
-        <div className="mt-4 relative max-w-sm">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cerca per nome o codice..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-          />
+        <div className="mt-4 flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cerca per nome o codice..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+            />
+          </div>
+
+          <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-0.5">
+            <button
+              onClick={() => setTab('lista')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                tab === 'lista'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <List size={14} />
+              Lista
+            </button>
+            <button
+              onClick={() => setTab('mappa')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                tab === 'mappa'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Map size={14} />
+              Mappa
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Lista */}
-      <div className="flex-1 overflow-auto">
-        {isLoading ? (
-          <div className="divide-y divide-slate-100">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-8 py-4 animate-pulse">
-                <div className="w-10 h-10 bg-slate-200 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-slate-200 rounded w-40" />
-                  <div className="h-3 bg-slate-100 rounded w-24" />
+      {tab === 'lista' && (
+        <div className="flex-1 overflow-auto">
+          {isLoading ? (
+            <div className="divide-y divide-slate-100">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-8 py-4 animate-pulse">
+                  <div className="w-10 h-10 bg-slate-200 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-40" />
+                    <div className="h-3 bg-slate-100 rounded w-24" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <UserCheck size={40} className="text-slate-300 mb-3" />
-            <p className="text-slate-500 font-medium">Nessun tecnico trovato</p>
-            <p className="text-slate-400 text-sm mt-1">
-              {search ? 'Prova con un altro termine' : 'Aggiungi il primo tecnico'}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filtered.map((t: Tecnico) => {
-              const cfg = STATO_CFG[t.stato]
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => navigate(`/tecnici/${t.id}`)}
-                  className="flex items-center gap-4 px-8 py-4 hover:bg-slate-50 cursor-pointer group transition-colors"
-                >
-                  <Iniziali nome={t.nome} cognome={t.cognome} />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-900">{t.cognome} {t.nome}</p>
-                      <span className={`flex items-center gap-1 text-xs font-medium ${cfg.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                        {cfg.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{t.codice_tecnico}</p>
-                  </div>
-
-                  {/* Specializzazioni */}
-                  <div className="hidden md:flex items-center gap-1.5 flex-wrap max-w-xs">
-                    {t.specializzazioni.slice(0, 2).map(s => (
-                      <span key={s} className="flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                        <Wrench size={10} />
-                        {s}
-                      </span>
-                    ))}
-                    {t.specializzazioni.length > 2 && (
-                      <span className="text-xs text-slate-400">+{t.specializzazioni.length - 2}</span>
-                    )}
-                  </div>
-
-                  {/* Contatti */}
-                  <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400">
-                    {t.telefono && (
-                      <span className="flex items-center gap-1"><Phone size={11} />{t.telefono}</span>
-                    )}
-                    {t.email && (
-                      <span className="flex items-center gap-1 truncate max-w-[160px]"><Mail size={11} />{t.email}</span>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={e => {
-                      e.stopPropagation()
-                      if (confirm(`Eliminare ${t.nome} ${t.cognome}?`)) {
-                        deleteMutation.mutate(t.id)
-                      }
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <UserCheck size={40} className="text-slate-300 mb-3" />
+              <p className="text-slate-500 font-medium">Nessun tecnico trovato</p>
+              <p className="text-slate-400 text-sm mt-1">
+                {search ? 'Prova con un altro termine' : 'Aggiungi il primo tecnico'}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {filtered.map((t: Tecnico) => {
+                const cfg = STATO_CFG[t.stato]
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => navigate(`/tecnici/${t.id}`)}
+                    className="flex items-center gap-4 px-8 py-4 hover:bg-slate-50 cursor-pointer group transition-colors"
                   >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                    <Iniziali nome={t.nome} cognome={t.cognome} />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-900">{t.cognome} {t.nome}</p>
+                        <span className={`flex items-center gap-1 text-xs font-medium ${cfg.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">{t.codice_tecnico}</p>
+                    </div>
+
+                    {/* Specializzazioni */}
+                    <div className="hidden md:flex items-center gap-1.5 flex-wrap max-w-xs">
+                      {t.specializzazioni.slice(0, 2).map(s => (
+                        <span key={s} className="flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          <Wrench size={10} />
+                          {s}
+                        </span>
+                      ))}
+                      {t.specializzazioni.length > 2 && (
+                        <span className="text-xs text-slate-400">+{t.specializzazioni.length - 2}</span>
+                      )}
+                    </div>
+
+                    {/* Contatti */}
+                    <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400">
+                      {t.telefono && (
+                        <span className="flex items-center gap-1"><Phone size={11} />{t.telefono}</span>
+                      )}
+                      {t.email && (
+                        <span className="flex items-center gap-1 truncate max-w-[160px]"><Mail size={11} />{t.email}</span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={e => {
+                        e.stopPropagation()
+                        if (confirm(`Eliminare ${t.nome} ${t.cognome}?`)) {
+                          deleteMutation.mutate(t.id)
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={`flex-1 overflow-hidden ${tab === 'mappa' ? 'flex flex-col' : 'hidden'}`}>
+        <MappaTecnici tecnici={tecnici} isVisible={tab === 'mappa'} />
       </div>
     </div>
   )
