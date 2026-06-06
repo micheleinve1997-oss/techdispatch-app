@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserCheck, Trash2, Phone, Mail, Wrench } from 'lucide-react'
+import { Plus, Search, UserCheck, Trash2, Phone, Mail, Wrench, Upload } from 'lucide-react'
 import { tecniciApi, type Tecnico, type StatoTecnico } from '../api/tecnici'
 
 const STATO_CFG: Record<StatoTecnico, { label: string; dot: string; text: string }> = {
@@ -55,13 +55,22 @@ export default function Tecnici() {
               {attivi} attivi su {tecnici.length} totali
             </p>
           </div>
-          <button
-            onClick={() => navigate('/tecnici/nuovo')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
-          >
-            <Plus size={16} />
-            Nuovo tecnico
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/tecnici-import')}
+              className="flex items-center gap-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <Upload size={16} />
+              Importa
+            </button>
+            <button
+              onClick={() => navigate('/tecnici/nuovo')}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              <Plus size={16} />
+              Nuovo tecnico
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 relative max-w-sm">
