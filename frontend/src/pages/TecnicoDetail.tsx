@@ -95,7 +95,7 @@ export default function TecnicoDetail() {
     onSuccess: (saved) => {
       qc.invalidateQueries({ queryKey: ['tecnici'] })
       if (isNew) {
-        window.location.href = saved?.id ? `/tecnici/${saved.id}` : '/tecnici'
+        navigate('/tecnici', { replace: true })
       } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
