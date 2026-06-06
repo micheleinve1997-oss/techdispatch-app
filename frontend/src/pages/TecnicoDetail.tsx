@@ -102,7 +102,8 @@ export default function TecnicoDetail() {
       }
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Errore salvataggio'
+      const e = err as { response?: { data?: { detail?: string }; status?: number } }
+      const msg = e?.response?.data?.detail ?? `Errore HTTP ${e?.response?.status ?? 'sconosciuto'}`
       setError(msg)
     },
   })

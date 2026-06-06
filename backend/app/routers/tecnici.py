@@ -117,26 +117,33 @@ async def get_tecnico(tecnico_id: str):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def crea_tecnico(tecnico: TecnicoCreate):
-    now = datetime.now(timezone.utc)
-    data = tecnico.model_dump()
-    data["codice_tecnico"] = await genera_codice_tecnico()
-    data["attivo"] = True
-    data["created_at"] = now
-    data["updated_at"] = now
-    result = await db.tecnici.insert_one(data)
-    doc = await db.tecnici.find_one({"_id": result.inserted_id})
-    return serialize(doc)
+    try:
+        now = datetime.now(timezone.utc)
+        data = tecnico.model_dump(mode="json")
+        data["codice_tecnico"] = await genera_codice_tecnico()
+        data["attivo"] = True
+        data["created_at"] = now
+        data["updated_at"] = now
+        result = await db.tecnici.insert_one(data)
+        doc = await db.tecnici.find_one({"_id": result.inserted_id})
+        return serialize(doc)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{tecnico_id}")
 async def aggiorna_tecnico(tecnico_id: str, tecnico: TecnicoUpdate):
-    doc = await db.tecnici.find_one({"_id": ObjectId(tecnico_id)})
+    try:
+        oid = ObjectId(tecnico_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Tecnico non trovato")
+    doc = await db.tecnici.find_one({"_id": oid})
     if not doc:
         raise HTTPException(status_code=404, detail="Tecnico non trovato")
-    aggiornamenti = {k: v for k, v in tecnico.model_dump().items() if v is not None}
+    aggiornamenti = {k: v for k, v in tecnico.model_dump(mode="json").items() if v is not None}
     aggiornamenti["updated_at"] = datetime.now(timezone.utc)
-    await db.tecnici.update_one({"_id": ObjectId(tecnico_id)}, {"$set": aggiornamenti})
-    doc = await db.tecnici.find_one({"_id": ObjectId(tecnico_id)})
+    await db.tecnici.update_one({"_id": oid}, {"$set": aggiornamenti})
+    doc = await db.tecnici.find_one({"_id": oid})
     return serialize(doc)
 
 
