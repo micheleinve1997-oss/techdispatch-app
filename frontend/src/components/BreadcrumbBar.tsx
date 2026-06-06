@@ -1,7 +1,8 @@
-﻿import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Home } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
+import { tecniciApi } from '../api/tecnici'
 
 function CrumbLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
@@ -13,38 +14,47 @@ function CrumbLink({ to, children }: { to: string; children: React.ReactNode }) 
 
 export default function BreadcrumbBar() {
   const location = useLocation()
+
   const clienteMatch = location.pathname.match(/^\/clienti\/([^/]+)/)
   const clienteId = clienteMatch?.[1]
   const isClienteDetail = Boolean(clienteId && clienteId !== 'nuovo')
 
+  const tecnicoMatch = location.pathname.match(/^\/tecnici\/([^/]+)/)
+  const tecnicoId = tecnicoMatch?.[1]
+  const isTecnicoDetail = Boolean(tecnicoId && tecnicoId !== 'nuovo' && /^[0-9a-f]{24}$/i.test(tecnicoId))
+
   const { data: cliente } = useQuery({
     queryKey: ['cliente', clienteId],
     queryFn: () => clientiApi.get(clienteId!),
-    enabled: Boolean(isClienteDetail),
+    enabled: isClienteDetail,
+  })
+
+  const { data: tecnico } = useQuery({
+    queryKey: ['tecnico', tecnicoId],
+    queryFn: () => tecniciApi.get(tecnicoId!),
+    enabled: isTecnicoDetail,
   })
 
   let section = 'Clienti'
+  let sectionTo = '/clienti'
   let detail: string | null = null
 
-  if (location.pathname === '/clienti') {
-    section = 'Clienti'
-  } else if (location.pathname === '/clienti-import') {
-    section = 'Clienti'
-    detail = 'Importazione'
-  } else if (location.pathname === '/clienti/nuovo') {
-    section = 'Clienti'
-    detail = 'Nuovo cliente'
-  } else if (isClienteDetail) {
-    section = 'Clienti'
-    detail = cliente?.ragione_sociale ?? 'Cliente'
-  } else if (location.pathname.startsWith('/tecnici')) {
+  if (location.pathname.startsWith('/tecnici')) {
     section = 'Tecnici'
+    sectionTo = '/tecnici'
+    if (location.pathname === '/tecnici/nuovo') detail = 'Nuovo tecnico'
+    else if (isTecnicoDetail) detail = tecnico ? `${tecnico.cognome} ${tecnico.nome}` : 'Tecnico'
   } else if (location.pathname.startsWith('/pianificatore')) {
-    section = 'Pianificatore'
+    section = 'Pianificatore'; sectionTo = '/pianificatore'
   } else if (location.pathname.startsWith('/ticket')) {
-    section = 'Ticket'
+    section = 'Ticket'; sectionTo = '/ticket'
   } else if (location.pathname.startsWith('/impostazioni')) {
-    section = 'Impostazioni'
+    section = 'Impostazioni'; sectionTo = '/impostazioni'
+  } else {
+    // clienti
+    if (location.pathname === '/clienti-import') detail = 'Importazione'
+    else if (location.pathname === '/clienti/nuovo') detail = 'Nuovo cliente'
+    else if (isClienteDetail) detail = cliente?.ragione_sociale ?? 'Cliente'
   }
 
   return (
@@ -55,11 +65,7 @@ export default function BreadcrumbBar() {
         </span>
       </CrumbLink>
       <ChevronRight size={13} className="text-slate-300" />
-      {section === 'Clienti' ? (
-        <CrumbLink to="/clienti">Clienti</CrumbLink>
-      ) : (
-        <span className="text-slate-700">{section}</span>
-      )}
+      <CrumbLink to={sectionTo}>{section}</CrumbLink>
       {detail && (
         <>
           <ChevronRight size={13} className="text-slate-300" />
@@ -69,6 +75,3 @@ export default function BreadcrumbBar() {
     </div>
   )
 }
-
-
-

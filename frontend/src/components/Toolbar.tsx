@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -6,6 +6,7 @@ import {
   Search, FilePlus, Save, RotateCcw, Printer, Trash2, Pencil
 } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
+import { tecniciApi } from '../api/tecnici'
 import { useToolbar } from '../context/ToolbarContext'
 
 function TBtn({
@@ -41,54 +42,71 @@ export default function Toolbar() {
   const [cercaOpen, setCercaOpen] = useState(false)
   const [cercaQ, setCercaQ] = useState('')
 
+  const pathname = window.location.pathname
+  const isTecnici = pathname.startsWith('/tecnici')
+
+  // Clienti
   const { data: clienti = [] } = useQuery({
     queryKey: ['clienti'],
     queryFn: () => clientiApi.list(),
+    enabled: !isTecnici,
   })
 
-  // Legge il cliente corrente dall'URL
-  const pathname = window.location.pathname
-  const match = pathname.match(/^\/clienti\/(.+)$/)
-  const currentId = match ? match[1] : null
-  const isNew = currentId === 'nuovo'
+  // Tecnici
+  const { data: tecnici = [] } = useQuery({
+    queryKey: ['tecnici'],
+    queryFn: tecniciApi.list,
+    enabled: isTecnici,
+  })
 
-  const currentIndex = currentId && !isNew
-    ? clienti.findIndex(c => c.id === currentId)
-    : -1
-  const total = clienti.length
+  // Routing corrente
+  const clienteMatch = pathname.match(/^\/clienti\/(.+)$/)
+  const tecnicoMatch = pathname.match(/^\/tecnici\/(.+)$/)
+  const currentClienteId = clienteMatch?.[1]
+  const currentTecnicoId = tecnicoMatch?.[1]
+  const isNew = currentClienteId === 'nuovo' || currentTecnicoId === 'nuovo'
+
+  const currentIndex = isTecnici
+    ? (currentTecnicoId && !isNew ? tecnici.findIndex(t => t.id === currentTecnicoId) : -1)
+    : (currentClienteId && !isNew ? clienti.findIndex(c => c.id === currentClienteId) : -1)
+
+  const list = isTecnici ? tecnici : clienti
+  const total = list.length
   const hasPrev = currentIndex > 0
   const hasNext = currentIndex < total - 1 && currentIndex !== -1
 
   const navTo = (idx: number) => {
-    if (idx >= 0 && idx < clienti.length) {
-      navigate(`/clienti/${clienti[idx].id}`)
+    if (idx >= 0 && idx < list.length) {
+      const item = list[idx]
+      navigate(isTecnici ? `/tecnici/${item.id}` : `/clienti/${item.id}`)
     }
   }
 
-  const clientiFiltrati = clienti.filter(c =>
-    c.ragione_sociale.toLowerCase().includes(cercaQ.toLowerCase()) ||
-    c.codice_cliente.toLowerCase().includes(cercaQ.toLowerCase())
-  )
+  const filtrati = isTecnici
+    ? tecnici.filter(t =>
+        `${t.nome} ${t.cognome}`.toLowerCase().includes(cercaQ.toLowerCase()) ||
+        t.codice_tecnico.toLowerCase().includes(cercaQ.toLowerCase())
+      )
+    : clienti.filter(c =>
+        c.ragione_sociale.toLowerCase().includes(cercaQ.toLowerCase()) ||
+        c.codice_cliente.toLowerCase().includes(cercaQ.toLowerCase())
+      )
 
   return (
     <div className="w-full bg-slate-100 border-b border-slate-300 px-3 py-1 flex items-center gap-0.5 shrink-0 z-10">
 
       {/* Navigazione */}
       <TBtn title="Primo" onClick={() => navTo(0)} disabled={!hasPrev}>
-        <ChevronsLeft size={18} />
-        <span>Primo</span>
+        <ChevronsLeft size={18} /><span>Primo</span>
       </TBtn>
       <TBtn title="Precedente" onClick={() => navTo(currentIndex - 1)} disabled={!hasPrev}>
-        <ChevronLeft size={18} />
-        <span>Prec.</span>
+        <ChevronLeft size={18} /><span>Prec.</span>
       </TBtn>
       <TBtn title="Successivo" onClick={() => navTo(currentIndex + 1)} disabled={!hasNext}>
-        <ChevronRight size={18} />
-        <span>Succ.</span>
+        <ChevronRight size={18} /><span>Succ.</span>
       </TBtn>
       <TBtn title="Ultimo" onClick={() => navTo(total - 1)} disabled={!hasNext}>
-        <ChevronsRight size={18} />
-        <span>Ultimo</span>
+        <ChevronsRight size={18} /><span>Ultimo</span>
       </TBtn>
 
       {currentIndex !== -1 && (
@@ -101,9 +119,8 @@ export default function Toolbar() {
 
       {/* Cerca */}
       <div className="relative">
-        <TBtn title="Cerca cliente" onClick={() => { setCercaOpen(o => !o); setCercaQ('') }}>
-          <Search size={18} />
-          <span>Cerca</span>
+        <TBtn title="Cerca" onClick={() => { setCercaOpen(o => !o); setCercaQ('') }}>
+          <Search size={18} /><span>Cerca</span>
         </TBtn>
         {cercaOpen && (
           <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -113,22 +130,28 @@ export default function Toolbar() {
                 type="text"
                 value={cercaQ}
                 onChange={e => setCercaQ(e.target.value)}
-                placeholder="Nome o codice..."
+                placeholder="Cerca..."
                 className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
             <div className="max-h-64 overflow-y-auto">
-              {clientiFiltrati.slice(0, 30).map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => { navigate(`/clienti/${c.id}`); setCercaOpen(false) }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition border-b border-slate-50"
-                >
-                  <p className="text-sm font-medium text-slate-800">{c.ragione_sociale}</p>
-                  <p className="text-xs text-slate-400">{c.codice_cliente}</p>
-                </button>
-              ))}
-              {clientiFiltrati.length === 0 && (
+              {isTecnici
+                ? (filtrati as typeof tecnici).slice(0, 30).map(t => (
+                    <button key={t.id} onClick={() => { navigate(`/tecnici/${t.id}`); setCercaOpen(false) }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition border-b border-slate-50">
+                      <p className="text-sm font-medium text-slate-800">{t.cognome} {t.nome}</p>
+                      <p className="text-xs text-slate-400">{t.codice_tecnico}</p>
+                    </button>
+                  ))
+                : (filtrati as typeof clienti).slice(0, 30).map(c => (
+                    <button key={c.id} onClick={() => { navigate(`/clienti/${c.id}`); setCercaOpen(false) }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition border-b border-slate-50">
+                      <p className="text-sm font-medium text-slate-800">{c.ragione_sociale}</p>
+                      <p className="text-xs text-slate-400">{c.codice_cliente}</p>
+                    </button>
+                  ))
+              }
+              {filtrati.length === 0 && (
                 <p className="text-sm text-slate-400 text-center py-4">Nessun risultato</p>
               )}
             </div>
@@ -138,39 +161,23 @@ export default function Toolbar() {
 
       <Divider />
 
-      {/* Azioni */}
-      <TBtn title="Nuovo cliente" onClick={() => navigate('/clienti/nuovo')} variant="primary">
-        <FilePlus size={18} />
-        <span>Nuovo</span>
+      <TBtn title="Nuovo" onClick={() => navigate(isTecnici ? '/tecnici/nuovo' : '/clienti/nuovo')} variant="primary">
+        <FilePlus size={18} /><span>Nuovo</span>
       </TBtn>
 
-      {/* Modifica â€” visibile solo in modalitÃ  visualizzazione */}
       {actions.canEdit && !actions.editMode && (
         <TBtn title="Modifica" onClick={actions.onEdit} variant="primary">
-          <Pencil size={18} />
-          <span>Modifica</span>
+          <Pencil size={18} /><span>Modifica</span>
         </TBtn>
       )}
 
-      {/* Salva e Annulla â€” visibili solo in modalitÃ  modifica */}
       {actions.editMode && (
         <>
-          <TBtn
-            title="Salva"
-            onClick={actions.onSave}
-            disabled={!actions.canSave || actions.isSaving}
-            variant="primary"
-          >
-            <Save size={18} />
-            <span>{actions.isSaving ? '...' : 'Salva'}</span>
+          <TBtn title="Salva" onClick={actions.onSave} disabled={!actions.canSave || actions.isSaving} variant="primary">
+            <Save size={18} /><span>{actions.isSaving ? '...' : 'Salva'}</span>
           </TBtn>
-          <TBtn
-            title="Annulla modifiche"
-            onClick={actions.onReset}
-            disabled={!actions.canReset}
-          >
-            <RotateCcw size={18} />
-            <span>Annulla</span>
+          <TBtn title="Annulla modifiche" onClick={actions.onReset} disabled={!actions.canReset}>
+            <RotateCcw size={18} /><span>Annulla</span>
           </TBtn>
         </>
       )}
@@ -178,22 +185,14 @@ export default function Toolbar() {
       <Divider />
 
       <TBtn title="Stampa" onClick={() => window.print()}>
-        <Printer size={18} />
-        <span>Stampa</span>
+        <Printer size={18} /><span>Stampa</span>
       </TBtn>
 
       <Divider />
 
-      <TBtn
-        title="Elimina"
-        onClick={actions.onDelete}
-        disabled={!actions.onDelete || !actions.canDelete}
-        variant="danger"
-      >
-        <Trash2 size={18} />
-        <span>Elimina</span>
+      <TBtn title="Elimina" onClick={actions.onDelete} disabled={!actions.onDelete || !actions.canDelete} variant="danger">
+        <Trash2 size={18} /><span>Elimina</span>
       </TBtn>
     </div>
   )
 }
-
