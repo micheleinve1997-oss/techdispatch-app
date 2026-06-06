@@ -92,7 +92,7 @@ export default function TecnicoDetail() {
     mutationFn: () => isNew
       ? tecniciApi.create(form)
       : tecniciApi.update(id!, form),
-    onSuccess: (saved) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tecnici'] })
       if (isNew) {
         navigate('/tecnici', { replace: true })
