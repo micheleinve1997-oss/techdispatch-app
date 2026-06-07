@@ -57,6 +57,9 @@ export const interventiApi = {
   saveGeo: (id: string, lat: number, lng: number) =>
     api.patch(`/interventi/${id}/geo`, { lat, lng }),
 
+  clearAll: () =>
+    api.delete<{ ok: boolean; eliminati: number }>('/interventi/clear-all').then(r => r.data),
+
   delete: (id: string) =>
     api.delete(`/interventi/${id}`),
 }

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight,
-  Search, FilePlus, Save, RotateCcw, Printer, Trash2, Pencil
+  Search, FilePlus, Save, RotateCcw, Printer, Trash2, Pencil, Database
 } from 'lucide-react'
 import { clientiApi } from '../api/clienti'
 import { tecniciApi } from '../api/tecnici'
+import { interventiApi } from '../api/interventi'
 import { useToolbar } from '../context/ToolbarContext'
 
 function TBtn({
@@ -38,25 +39,35 @@ function Divider() {
 
 export default function Toolbar() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { actions } = useToolbar()
   const [cercaOpen, setCercaOpen] = useState(false)
   const [cercaQ, setCercaQ] = useState('')
 
   const pathname = window.location.pathname
   const isTecnici = pathname.startsWith('/tecnici')
+  const isClienti = pathname.startsWith('/clienti')
+  const isInterventi = pathname.startsWith('/interventi')
+  const activeSection = isClienti ? 'clienti' : isTecnici ? 'tecnici' : isInterventi ? 'interventi' : null
 
   // Clienti
   const { data: clienti = [] } = useQuery({
     queryKey: ['clienti'],
     queryFn: () => clientiApi.list(),
-    enabled: !isTecnici,
+    enabled: isClienti,
   })
 
   // Tecnici
   const { data: tecnici = [] } = useQuery({
     queryKey: ['tecnici'],
     queryFn: tecniciApi.list,
-    enabled: isTecnici,
+    enabled: isTecnici || isInterventi,
+  })
+
+  const { data: interventi = [] } = useQuery({
+    queryKey: ['interventi'],
+    queryFn: () => interventiApi.list(),
+    enabled: isInterventi,
   })
 
   // Routing corrente
@@ -91,6 +102,48 @@ export default function Toolbar() {
         c.ragione_sociale.toLowerCase().includes(cercaQ.toLowerCase()) ||
         c.codice_cliente.toLowerCase().includes(cercaQ.toLowerCase())
       )
+
+  const clearSection = async () => {
+    if (!activeSection) return
+    const labels = {
+      clienti: 'clienti',
+      tecnici: 'tecnici',
+      interventi: 'interventi',
+    }
+    const label = labels[activeSection]
+    const typed = window.prompt(`Stai per eliminare definitivamente tutti i dati della sezione ${label}. Scrivi SVUOTA per confermare.`)
+    if (typed !== 'SVUOTA') return
+
+    if (activeSection === 'clienti') {
+      await clientiApi.clearAll()
+      localStorage.removeItem('td_geo_cache')
+      qc.invalidateQueries({ queryKey: ['clienti'] })
+      navigate('/clienti')
+    } else if (activeSection === 'tecnici') {
+      await tecniciApi.clearAll()
+      localStorage.removeItem('td_geo_tecnici_cache')
+      qc.invalidateQueries({ queryKey: ['tecnici'] })
+      navigate('/tecnici')
+    } else {
+      await interventiApi.clearAll()
+      localStorage.removeItem('td_geo_interventi_cache')
+      qc.invalidateQueries({ queryKey: ['interventi'] })
+      navigate('/interventi')
+    }
+  }
+
+  const clearCount = activeSection === 'clienti'
+    ? clienti.length
+    : activeSection === 'tecnici'
+      ? tecnici.length
+      : activeSection === 'interventi'
+        ? interventi.length
+        : 0
+  const newTarget = activeSection === 'clienti'
+    ? '/clienti/nuovo'
+    : activeSection === 'tecnici'
+      ? '/tecnici/nuovo'
+      : null
 
   return (
     <div className="w-full bg-slate-100 border-b border-slate-300 px-3 py-1 flex items-center gap-0.5 shrink-0 z-10">
@@ -161,7 +214,7 @@ export default function Toolbar() {
 
       <Divider />
 
-      <TBtn title="Nuovo" onClick={() => navigate(isTecnici ? '/tecnici/nuovo' : '/clienti/nuovo')} variant="primary">
+      <TBtn title="Nuovo" onClick={() => newTarget && navigate(newTarget)} disabled={!newTarget} variant="primary">
         <FilePlus size={18} /><span>Nuovo</span>
       </TBtn>
 
@@ -189,6 +242,12 @@ export default function Toolbar() {
       </TBtn>
 
       <Divider />
+
+      {activeSection && (
+        <TBtn title={`Svuota sezione ${activeSection}`} onClick={clearSection} disabled={clearCount === 0} variant="danger">
+          <Database size={18} /><span>Svuota</span>
+        </TBtn>
+      )}
 
       <TBtn title="Elimina" onClick={actions.onDelete} disabled={!actions.onDelete || !actions.canDelete} variant="danger">
         <Trash2 size={18} /><span>Elimina</span>

@@ -88,6 +88,12 @@ async def check_duplicato(partita_iva: Optional[str] = None, codice_fiscale: Opt
     }
 
 
+@router.delete("/clear-all")
+async def svuota_clienti():
+    result = await db.clienti.delete_many({})
+    return {"ok": True, "eliminati": result.deleted_count}
+
+
 @router.get("/{cliente_id}", response_model=ClienteResponse)
 async def get_cliente(cliente_id: str):
     doc = await db.clienti.find_one({"_id": ObjectId(cliente_id)})

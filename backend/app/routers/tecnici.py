@@ -104,6 +104,12 @@ async def lista_tecnici(stato: Optional[str] = None):
     return [serialize(t) for t in tecnici]
 
 
+@router.delete("/clear-all")
+async def svuota_tecnici():
+    result = await db.tecnici.delete_many({})
+    return {"ok": True, "eliminati": result.deleted_count}
+
+
 @router.get("/{tecnico_id}")
 async def get_tecnico(tecnico_id: str):
     try:

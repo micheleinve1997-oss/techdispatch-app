@@ -48,6 +48,9 @@ export default function BreadcrumbBar() {
     section = 'Pianificatore'; sectionTo = '/pianificatore'
   } else if (location.pathname.startsWith('/ticket')) {
     section = 'Ticket'; sectionTo = '/ticket'
+  } else if (location.pathname.startsWith('/interventi')) {
+    section = 'Interventi'; sectionTo = '/interventi'
+    if (location.pathname === '/interventi-import') detail = 'Importazione'
   } else if (location.pathname.startsWith('/impostazioni')) {
     section = 'Impostazioni'; sectionTo = '/impostazioni'
   } else {

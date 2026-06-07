@@ -74,7 +74,9 @@ export const clientiApi = {
   delete: (id: string) =>
     api.delete(`/clienti/${id}`),
 
+  clearAll: () =>
+    api.delete<{ ok: boolean; eliminati: number }>('/clienti/clear-all').then(r => r.data),
+
   saveGeo: (id: string, lat: number, lng: number) =>
     api.patch(`/clienti/${id}/geo`, { lat, lng }),
 }
-

@@ -55,5 +55,6 @@ export const tecniciApi = {
   update: (id: string, data: Partial<TecnicoCreate>) => api.put<Tecnico>(`/tecnici/${id}`, data).then(r => r.data),
   updateStato: (id: string, stato: StatoTecnico) => api.patch(`/tecnici/${id}/stato`, { stato }),
   saveGeo: (id: string, lat: number, lng: number) => api.patch(`/tecnici/${id}/geo`, { lat, lng }),
+  clearAll: () => api.delete<{ ok: boolean; eliminati: number }>('/tecnici/clear-all').then(r => r.data),
   delete: (id: string) => api.delete(`/tecnici/${id}`),
 }

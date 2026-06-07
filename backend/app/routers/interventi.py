@@ -392,6 +392,12 @@ async def import_interventi(file: UploadFile = File(...), mapping: str = Form(de
     return results
 
 
+@router.delete("/clear-all")
+async def svuota_interventi():
+    result = await db.interventi.delete_many({})
+    return {"ok": True, "eliminati": result.deleted_count}
+
+
 @router.get("/{intervento_id}", response_model=InterventoResponse)
 async def get_intervento(intervento_id: str):
     doc = await db.interventi.find_one({"_id": to_object_id(intervento_id)})
