@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { CalendarClock, ClipboardList, FileCheck2, FileText, List, Map, Search, ShieldAlert, Ticket, Upload, Wrench } from 'lucide-react'
 import { interventiApi, type Intervento, type OrigineIntervento, type PrioritaIntervento, type StatoIntervento } from '../api/interventi'
+import { tecniciApi } from '../api/tecnici'
 import MappaInterventi from '../components/MappaInterventi'
 
 const STATO_LABEL: Record<StatoIntervento, string> = {
@@ -77,6 +78,11 @@ export default function Interventi() {
   const { data: interventi = [], isLoading } = useQuery({
     queryKey: ['interventi'],
     queryFn: () => interventiApi.list(),
+  })
+
+  const { data: tecnici = [] } = useQuery({
+    queryKey: ['tecnici'],
+    queryFn: tecniciApi.list,
   })
 
   const filtered = useMemo(() => interventi.filter(i =>
@@ -261,7 +267,7 @@ export default function Interventi() {
       )}
 
       <div className={`flex-1 overflow-hidden ${tab === 'mappa' ? 'flex flex-col' : 'hidden'}`}>
-        <MappaInterventi interventi={filtered} isVisible={tab === 'mappa'} />
+        <MappaInterventi interventi={filtered} tecnici={tecnici} isVisible={tab === 'mappa'} />
       </div>
     </div>
   )

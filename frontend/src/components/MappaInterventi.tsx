@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Loader2, MapPin } from 'lucide-react'
 import type { Intervento } from '../api/interventi'
 import { interventiApi } from '../api/interventi'
+import type { Tecnico } from '../api/tecnici'
+import { tecniciApi } from '../api/tecnici'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -17,21 +19,28 @@ interface GeoIntervento extends Intervento {
   lng: number
 }
 
+interface GeoTecnico extends Tecnico {
+  lat: number
+  lng: number
+}
+
 interface Props {
   interventi: Intervento[]
+  tecnici: Tecnico[]
   isVisible: boolean
 }
 
-const GEO_KEY = 'td_geo_interventi_cache'
+const GEO_INTERVENTI_KEY = 'td_geo_interventi_cache'
+const GEO_TECNICI_KEY = 'td_geo_tecnici_cache'
 
-function loadCache(): Record<string, { lat: number; lng: number }> {
-  try { return JSON.parse(localStorage.getItem(GEO_KEY) || '{}') } catch { return {} }
+function loadCache(key: string): Record<string, { lat: number; lng: number }> {
+  try { return JSON.parse(localStorage.getItem(key) || '{}') } catch { return {} }
 }
 
-function saveCache(id: string, lat: number, lng: number) {
-  const cache = loadCache()
+function saveCache(key: string, id: string, lat: number, lng: number) {
+  const cache = loadCache(key)
   cache[id] = { lat, lng }
-  localStorage.setItem(GEO_KEY, JSON.stringify(cache))
+  localStorage.setItem(key, JSON.stringify(cache))
 }
 
 function formatDate(value?: string) {
@@ -39,11 +48,25 @@ function formatDate(value?: string) {
   return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value))
 }
 
-async function geocodeIntervento(i: Intervento): Promise<{ lat: number; lng: number } | null> {
+function initials(t: Tecnico) {
+  return `${t.nome.charAt(0)}${t.cognome.charAt(0)}`.toUpperCase()
+}
+
+function makeTechIcon(t: Tecnico) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:30px;height:30px;border-radius:999px;background:#0f766e;color:white;border:2px solid white;box-shadow:0 2px 7px rgba(15,23,42,.28);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${initials(t)}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  })
+}
+
+async function geocodeAddress(parts: Array<string | undefined | null>): Promise<{ lat: number; lng: number } | null> {
   const queries = [
-    [i.indirizzo, i.cap, i.citta, 'Italia'].filter(Boolean).join(', '),
-    [i.citta, i.provincia, 'Italia'].filter(Boolean).join(', '),
-    [i.cap, 'Italia'].filter(Boolean).join(', '),
+    [parts[0], parts[1], parts[2], 'Italia'].filter(Boolean).join(', '),
+    [parts[2], parts[3], 'Italia'].filter(Boolean).join(', '),
+    [parts[1], 'Italia'].filter(Boolean).join(', '),
   ].filter(q => q.replace(/,\s*/g, '').trim().length > 0)
 
   for (const q of queries) {
@@ -61,15 +84,15 @@ async function geocodeIntervento(i: Intervento): Promise<{ lat: number; lng: num
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-function resolveGeo(interventi: Intervento[]): { geo: GeoIntervento[]; senza: Intervento[] } {
-  const cache = loadCache()
+function resolveInterventiGeo(interventi: Intervento[]): { geo: GeoIntervento[]; senza: Intervento[] } {
+  const cache = loadCache(GEO_INTERVENTI_KEY)
   const geo: GeoIntervento[] = []
   const senza: Intervento[] = []
 
   for (const i of interventi) {
     if (typeof i.lat === 'number' && typeof i.lng === 'number') {
       geo.push(i as GeoIntervento)
-      saveCache(i.id, i.lat, i.lng)
+      saveCache(GEO_INTERVENTI_KEY, i.id, i.lat, i.lng)
       continue
     }
 
@@ -79,26 +102,60 @@ function resolveGeo(interventi: Intervento[]): { geo: GeoIntervento[]; senza: In
       continue
     }
 
-    const hasAddress = i.citta || i.indirizzo || i.cap
-    if (hasAddress) senza.push(i)
+    if (i.citta || i.indirizzo || i.cap) senza.push(i)
   }
 
   return { geo, senza }
 }
 
-export default function MappaInterventi({ interventi, isVisible }: Props) {
+function resolveTecniciGeo(tecnici: Tecnico[]): { geo: GeoTecnico[]; senza: Tecnico[] } {
+  const cache = loadCache(GEO_TECNICI_KEY)
+  const geo: GeoTecnico[] = []
+  const senza: Tecnico[] = []
+
+  for (const t of tecnici) {
+    const dbLat = t.sede_partenza?.lat
+    const dbLng = t.sede_partenza?.lng
+    if (typeof dbLat === 'number' && typeof dbLng === 'number') {
+      geo.push({ ...t, lat: dbLat, lng: dbLng })
+      saveCache(GEO_TECNICI_KEY, t.id, dbLat, dbLng)
+      continue
+    }
+
+    const cached = cache[t.id]
+    if (cached) {
+      geo.push({ ...t, lat: cached.lat, lng: cached.lng })
+      continue
+    }
+
+    const hasSede = t.sede_partenza?.citta || t.sede_partenza?.indirizzo || t.sede_partenza?.cap
+    if (hasSede) senza.push(t)
+  }
+
+  return { geo, senza }
+}
+
+export default function MappaInterventi({ interventi, tecnici, isVisible }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
   const leafletMap = useRef<L.Map | null>(null)
   const markersRef = useRef<L.Marker[]>([])
 
-  const { geo: giaGeo, senza: daCodificare } = resolveGeo(interventi)
-  const [extraGeo, setExtraGeo] = useState<GeoIntervento[]>([])
+  const { geo: interventiGiaGeo, senza: interventiDaCodificare } = resolveInterventiGeo(interventi)
+  const { geo: tecniciGiaGeo, senza: tecniciDaCodificare } = resolveTecniciGeo(tecnici)
+
+  const [extraInterventiGeo, setExtraInterventiGeo] = useState<GeoIntervento[]>([])
+  const [extraTecniciGeo, setExtraTecniciGeo] = useState<GeoTecnico[]>([])
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  const tuttiGeo: GeoIntervento[] = [
-    ...giaGeo,
-    ...extraGeo.filter(e => !giaGeo.find(g => g.id === e.id)),
+  const interventiGeo: GeoIntervento[] = [
+    ...interventiGiaGeo,
+    ...extraInterventiGeo.filter(e => !interventiGiaGeo.find(g => g.id === e.id)),
+  ]
+
+  const tecniciGeo: GeoTecnico[] = [
+    ...tecniciGiaGeo,
+    ...extraTecniciGeo.filter(e => !tecniciGiaGeo.find(g => g.id === e.id)),
   ]
 
   useEffect(() => {
@@ -106,7 +163,7 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
     if (!mapRef.current) return
     if (leafletMap.current) {
       setTimeout(() => leafletMap.current?.invalidateSize(), 50)
-      addMarkers(tuttiGeo)
+      addMarkers(interventiGeo, tecniciGeo)
       return
     }
     const init = () => {
@@ -118,7 +175,9 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(leafletMap.current)
-      if (tuttiGeo.length > 0) setTimeout(() => addMarkers(tuttiGeo), 100)
+      if (interventiGeo.length > 0 || tecniciGeo.length > 0) {
+        setTimeout(() => addMarkers(interventiGeo, tecniciGeo), 100)
+      }
     }
     requestAnimationFrame(init)
     return () => { leafletMap.current?.remove(); leafletMap.current = null }
@@ -126,16 +185,19 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
   }, [isVisible])
 
   useEffect(() => {
-    if (leafletMap.current && tuttiGeo.length > 0) addMarkers(tuttiGeo)
+    if (leafletMap.current && (interventiGeo.length > 0 || tecniciGeo.length > 0)) {
+      addMarkers(interventiGeo, tecniciGeo)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tuttiGeo.length])
+  }, [interventiGeo.length, tecniciGeo.length])
 
-  const addMarkers = (list: GeoIntervento[]) => {
+  const addMarkers = (interventiList: GeoIntervento[], tecniciList: GeoTecnico[]) => {
     const map = leafletMap.current
     if (!map) return
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
-    list.forEach(i => {
+
+    interventiList.forEach(i => {
       const popup = L.popup({ closeButton: false, minWidth: 220 }).setContent(`
         <div style="font-family:system-ui,sans-serif">
           <p style="font-weight:600;font-size:13px;margin:0 0 2px;color:#0f172a">${i.titolo}</p>
@@ -148,9 +210,24 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
       const marker = L.marker([i.lat, i.lng]).addTo(map).bindPopup(popup)
       markersRef.current.push(marker)
     })
-    if (list.length === 1) {
-      map.setView([list[0].lat, list[0].lng], 13)
-    } else if (list.length > 1) {
+
+    tecniciList.forEach(t => {
+      const sp = t.sede_partenza
+      const popup = L.popup({ closeButton: false, minWidth: 200 }).setContent(`
+        <div style="font-family:system-ui,sans-serif">
+          <p style="font-weight:600;font-size:13px;margin:0 0 2px;color:#0f172a">${t.cognome} ${t.nome}</p>
+          <p style="font-size:11px;color:#64748b;margin:0 0 6px">${t.codice_tecnico} · partenza tecnico</p>
+          ${sp?.citta ? `<p style="font-size:12px;color:#475569;margin:0">Sede: ${sp.citta}${sp.provincia ? ` (${sp.provincia})` : ''}</p>` : ''}
+        </div>
+      `)
+      const marker = L.marker([t.lat, t.lng], { icon: makeTechIcon(t) }).addTo(map).bindPopup(popup)
+      markersRef.current.push(marker)
+    })
+
+    if (markersRef.current.length === 1) {
+      const markerLatLng = markersRef.current[0].getLatLng()
+      map.setView(markerLatLng, 13)
+    } else if (markersRef.current.length > 1) {
       map.fitBounds(L.featureGroup(markersRef.current).getBounds().pad(0.15))
     }
   }
@@ -158,55 +235,89 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
   const runGeocode = async () => {
     setLoading(true)
     setProgress(0)
-    const nuovi: GeoIntervento[] = []
-    for (let i = 0; i < daCodificare.length; i++) {
-      const intervento = daCodificare[i]
-      const coords = await geocodeIntervento(intervento)
+    const nuoviInterventi: GeoIntervento[] = []
+    const nuoviTecnici: GeoTecnico[] = []
+    const total = interventiDaCodificare.length + tecniciDaCodificare.length
+    let done = 0
+
+    for (let i = 0; i < interventiDaCodificare.length; i++) {
+      const intervento = interventiDaCodificare[i]
+      const coords = await geocodeAddress([intervento.indirizzo, intervento.cap, intervento.citta, intervento.provincia])
       if (coords) {
-        saveCache(intervento.id, coords.lat, coords.lng)
+        saveCache(GEO_INTERVENTI_KEY, intervento.id, coords.lat, coords.lng)
         interventiApi.saveGeo(intervento.id, coords.lat, coords.lng).catch(() => {})
-        nuovi.push({ ...intervento, lat: coords.lat, lng: coords.lng })
+        nuoviInterventi.push({ ...intervento, lat: coords.lat, lng: coords.lng })
       }
-      setProgress(i + 1)
-      if (i < daCodificare.length - 1) await sleep(1200)
+      done += 1
+      setProgress(done)
+      if (done < total) await sleep(1200)
     }
-    setExtraGeo(prev => [...prev, ...nuovi])
+
+    for (let i = 0; i < tecniciDaCodificare.length; i++) {
+      const tecnico = tecniciDaCodificare[i]
+      const sp = tecnico.sede_partenza
+      const coords = await geocodeAddress([sp?.indirizzo, sp?.cap, sp?.citta, sp?.provincia])
+      if (coords) {
+        saveCache(GEO_TECNICI_KEY, tecnico.id, coords.lat, coords.lng)
+        tecniciApi.saveGeo(tecnico.id, coords.lat, coords.lng).catch(() => {})
+        nuoviTecnici.push({ ...tecnico, lat: coords.lat, lng: coords.lng })
+      }
+      done += 1
+      setProgress(done)
+      if (done < total) await sleep(1200)
+    }
+
+    setExtraInterventiGeo(prev => [...prev, ...nuoviInterventi])
+    setExtraTecniciGeo(prev => [...prev, ...nuoviTecnici])
     setLoading(false)
   }
 
-  const totaleConIndirizzo = interventi.filter(i => i.citta || i.indirizzo || i.cap).length
+  const totaleInterventiConIndirizzo = interventi.filter(i => i.citta || i.indirizzo || i.cap).length
+  const totaleTecniciConSede = tecnici.filter(t => t.sede_partenza?.citta || t.sede_partenza?.indirizzo || t.sede_partenza?.cap).length
+  const totaleDaCodificare = interventiDaCodificare.length + tecniciDaCodificare.length
+  const totaleMappa = interventiGeo.length + tecniciGeo.length
+  const totaleConIndirizzo = totaleInterventiConIndirizzo + totaleTecniciConSede
 
   return (
     <div className="flex flex-col" style={{ height: '100%' }}>
       <div className="px-6 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-3 text-sm text-slate-500">
           <MapPin size={15} className="text-blue-500" />
           <span>
-            {tuttiGeo.length} di {totaleConIndirizzo} interventi sulla mappa
-            {daCodificare.length > 0 && !loading && (
-              <span className="ml-1 text-amber-600">· {daCodificare.length} senza coordinate</span>
+            {totaleMappa} marker sulla mappa
+            <span className="ml-2 text-slate-400">
+              {interventiGeo.length}/{totaleInterventiConIndirizzo} interventi · {tecniciGeo.length}/{totaleTecniciConSede} tecnici
+            </span>
+            {totaleDaCodificare > 0 && !loading && (
+              <span className="ml-1 text-amber-600">· {totaleDaCodificare} senza coordinate</span>
             )}
           </span>
+          {tecniciGeo.length > 0 && (
+            <span className="hidden md:inline-flex items-center gap-1 text-xs text-slate-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-700" />
+              partenza tecnici
+            </span>
+          )}
         </div>
 
-        {daCodificare.length > 0 && !loading && (
+        {totaleDaCodificare > 0 && !loading && (
           <button
             onClick={runGeocode}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <MapPin size={15} />
-            Geocodifica {daCodificare.length} interventi
+            Geocodifica {totaleDaCodificare} posizioni
           </button>
         )}
 
         {loading && (
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <Loader2 size={15} className="animate-spin text-blue-500" />
-            <span>Geocodifica {progress}/{daCodificare.length}...</span>
+            <span>Geocodifica {progress}/{totaleDaCodificare}...</span>
             <div className="w-36 h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                style={{ width: `${daCodificare.length > 0 ? (progress / daCodificare.length) * 100 : 0}%` }}
+                style={{ width: `${totaleDaCodificare > 0 ? (progress / totaleDaCodificare) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -216,7 +327,7 @@ export default function MappaInterventi({ interventi, isVisible }: Props) {
       {totaleConIndirizzo === 0 && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400">
           <AlertCircle size={36} />
-          <p className="text-sm">Nessun intervento ha un indirizzo configurato.</p>
+          <p className="text-sm">Nessun intervento o tecnico ha un indirizzo configurato.</p>
         </div>
       )}
 
