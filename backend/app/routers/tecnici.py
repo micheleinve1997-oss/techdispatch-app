@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+﻿from fastapi import APIRouter, HTTPException, status
 from typing import Optional, List
 from datetime import datetime, timezone
 from bson import ObjectId, errors as bson_errors
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
 
 from app.database import db
@@ -43,6 +43,13 @@ class SedePartenza(BaseModel):
     lng: Optional[float] = None
 
 
+class Indisponibilita(BaseModel):
+    tipo: str = Field(default="FERIE")
+    data_inizio: str
+    data_fine: str
+    note: Optional[str] = ""
+
+
 class TecnicoCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     nome: str
@@ -55,18 +62,17 @@ class TecnicoCreate(BaseModel):
     mezzo_proprio: bool = False
     stato: StatoTecnico = StatoTecnico.attivo
     note: Optional[str] = None
+    # Campi letti dal planner. Sono opzionali per restare compatibili con i tecnici già creati.
+    zona_preferita: Optional[str] = None
+    zone: List[str] = []
+    competenze: List[str] = []
+    ore_giornaliere: float = 8
+    indisponibilita: List[Indisponibilita] = []
 
 
 class TecnicoUpdate(TecnicoCreate):
     nome: Optional[str] = None
     cognome: Optional[str] = None
-
-
-class TecnicoResponse(TecnicoCreate):
-    id: str
-    codice_tecnico: str
-    created_at: datetime
-    updated_at: datetime
 
 
 def serialize(doc: dict) -> dict:
@@ -95,7 +101,7 @@ def lista_specializzazioni():
     return SPECIALIZZAZIONI_VALIDE
 
 
-@router.get("/", response_model=List[TecnicoResponse])
+@router.get("/")
 async def lista_tecnici(stato: Optional[str] = None):
     filtro: dict = {"attivo": True}
     if stato:

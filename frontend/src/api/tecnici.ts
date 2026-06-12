@@ -1,4 +1,4 @@
-import axios from 'axios'
+﻿import axios from 'axios'
 
 const API_ORIGIN = import.meta.env.VITE_API_URL || 'https://techdispatch-api.onrender.com'
 const baseURL = `${API_ORIGIN}/api`
@@ -28,6 +28,13 @@ export interface SedePartenza {
   lng?: number
 }
 
+export interface Indisponibilita {
+  tipo: string
+  data_inizio: string
+  data_fine: string
+  note?: string
+}
+
 export interface Tecnico {
   id: string
   codice_tecnico: string
@@ -41,6 +48,11 @@ export interface Tecnico {
   mezzo_proprio: boolean
   stato: StatoTecnico
   note?: string
+  zona_preferita?: string
+  zone?: string[]
+  competenze?: string[]
+  ore_giornaliere?: number
+  indisponibilita?: Indisponibilita[]
   attivo: boolean
   created_at: string
   updated_at: string

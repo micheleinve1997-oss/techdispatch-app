@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Toolbar from './components/Toolbar'
@@ -6,12 +6,14 @@ import BreadcrumbBar from './components/BreadcrumbBar'
 import Clienti from './pages/Clienti'
 import ClienteForm from './pages/ClienteForm'
 import ComingSoon from './pages/ComingSoon'
-import ImportClienti from './pages/ImportClienti'
 import Tecnici from './pages/Tecnici'
 import TecnicoDetail from './pages/TecnicoDetail'
 import ImportTecnici from './pages/ImportTecnici'
 import Interventi from './pages/Interventi'
 import ImportInterventi from './pages/ImportInterventi'
+import Vincoli from './pages/Vincoli'
+import Pianificatore from './pages/Pianificatore'
+import ImportClienti from './pages/ImportClienti'
 import { ToolbarProvider } from './context/ToolbarContext'
 
 export default function App() {
@@ -37,7 +39,8 @@ export default function App() {
               <Route path="/tecnici-import" element={<ImportTecnici />} />
               <Route path="/interventi" element={<Interventi />} />
               <Route path="/interventi-import" element={<ImportInterventi />} />
-              <Route path="/pianificatore" element={<ComingSoon titolo="Pianificatore" />} />
+              <Route path="/pianificatore" element={<Pianificatore />} />
+              <Route path="/vincoli" element={<Vincoli />} />
               <Route path="/ticket" element={<ComingSoon titolo="Ticket" />} />
               <Route path="/impostazioni" element={<ComingSoon titolo="Impostazioni" />} />
             </Routes>
