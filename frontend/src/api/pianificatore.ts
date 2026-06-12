@@ -34,6 +34,54 @@ export interface PlannerOverview {
   vincoli_totali: number
 }
 
+export interface PropostaIntervento {
+  id: string
+  codice_intervento?: string
+  titolo: string
+  cliente_nome?: string
+  cliente_id?: string
+  priorita?: string
+  origine?: string
+  zona: string
+  durata_stimata: number
+  motivazione?: string
+  motivo?: string
+}
+
+export interface PropostaCell {
+  date: string
+  zona_dominante?: string | null
+  ore_residue: number
+  interventi: PropostaIntervento[]
+}
+
+export interface PropostaRow {
+  tecnico: {
+    id: string
+    codice_tecnico: string
+    nome: string
+    cognome?: string
+    cap_partenza?: string
+    zona_preferita?: string
+  }
+  days: PropostaCell[]
+}
+
+export interface PlannerProposta {
+  start: string
+  days: string[]
+  rows: PropostaRow[]
+  non_pianificati: PropostaIntervento[]
+  warnings: Array<{ tipo: string; messaggio: string; tecnico_id?: string; date?: string }>
+  totali: {
+    interventi_pool: number
+    pianificati: number
+    non_pianificati: number
+    warnings: number
+  }
+}
+
 export const pianificatoreApi = {
   overview: (start?: string) => api.get<PlannerOverview>('/pianificatore/overview', { params: start ? { start } : {} }).then(r => r.data),
+  genera: (start?: string) => api.post<PlannerProposta>('/pianificatore/genera', null, { params: start ? { start } : {} }).then(r => r.data),
 }
