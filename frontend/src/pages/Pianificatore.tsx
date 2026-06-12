@@ -32,10 +32,11 @@ function InterventionCard({ item }: { item: PropostaIntervento }) {
     <div className={`rounded-lg border px-3 py-2 ${priorityClass[item.priorita ?? 'MEDIA'] ?? priorityClass.MEDIA}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold truncate">{item.titolo}</p>
-        <span className="text-[10px] font-mono shrink-0">{item.durata_stimata}h</span>
+        <span className="text-[10px] font-mono shrink-0">tot {item.tempo_totale ?? item.durata_stimata}h</span>
       </div>
       <p className="text-[11px] mt-1 opacity-80 truncate">{item.cliente_nome || 'Cliente non indicato'}</p>
       <p className="text-[11px] mt-1 opacity-70">Zona {item.zona}</p>
+      <p className="text-[11px] mt-1 opacity-70">Lavoro {item.durata_stimata}h · Viaggio {item.viaggio_stimato ?? 0}h</p>
     </div>
   )
 }
@@ -72,12 +73,13 @@ export default function Pianificatore() {
         </div>
       </div>
 
-      <div className="px-8 py-4 grid grid-cols-3 lg:grid-cols-5 gap-4 border-b border-slate-100">
+      <div className="px-8 py-4 grid grid-cols-3 lg:grid-cols-6 gap-4 border-b border-slate-100">
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Tecnici</p><p className="text-2xl font-semibold">{data?.rows.length ?? 0}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Vincoli</p><p className="text-2xl font-semibold">{data?.vincoli_totali ?? 0}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Blocchi</p><p className="text-2xl font-semibold">{indisponibili}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Pianificati</p><p className="text-2xl font-semibold">{proposta?.totali.pianificati ?? '-'}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Fuori</p><p className="text-2xl font-semibold">{proposta?.totali.non_pianificati ?? '-'}</p></div>
+        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Viaggio</p><p className="text-2xl font-semibold">{proposta?.totali.viaggio_stimato_totale ?? '-'}h</p></div>
       </div>
 
       {proposta?.warnings.length ? (
@@ -111,7 +113,7 @@ export default function Pianificatore() {
                         <div className={`min-h-36 rounded-lg border px-3 py-3 ${isProposal ? 'border-blue-100 bg-blue-50/20' : cell.disponibile ? 'border-slate-200 bg-slate-50/50' : 'border-red-200 bg-red-50'}`}>
                           {isProposal ? (
                             <>
-                              <div className="flex items-center justify-between gap-2 mb-2"><p className="text-xs font-semibold text-slate-500 uppercase">{cell.zona_dominante || 'Senza zona'}</p><p className="text-xs text-slate-400">{cell.ore_residue}h libere</p></div>
+                              <div className="flex items-start justify-between gap-2 mb-2"><p className="text-xs font-semibold text-slate-500 uppercase">{cell.zona_dominante || 'Senza zona'}</p><div className="text-right"><p className="text-xs text-slate-500">{cell.ore_residue}h libere</p><p className="text-[11px] text-slate-400">viaggio {cell.viaggio_totale ?? 0}h</p></div></div>
                               <div className="space-y-2">{cell.interventi.length ? cell.interventi.map((i: PropostaIntervento) => <InterventionCard key={i.id} item={i} />) : <p className="text-xs text-slate-400">Nessun intervento proposto</p>}</div>
                             </>
                           ) : cell.disponibile ? <><p className="text-xs font-semibold text-slate-500 uppercase">Disponibile</p><p className="text-sm text-slate-900 mt-1">{cell.ore_disponibili}h libere</p><p className="text-xs text-slate-400 mt-2">Premi “Genera proposta”</p></> : <><p className="text-xs font-semibold text-red-700 uppercase">Non disponibile</p>{cell.indisponibilita.map((i: any, idx: number) => <p key={idx} className="text-sm text-red-700 mt-1">{i.tipo} {i.note ? `- ${i.note}` : ''}</p>)}</>}
@@ -137,3 +139,5 @@ export default function Pianificatore() {
     </div>
   )
 }
+
+

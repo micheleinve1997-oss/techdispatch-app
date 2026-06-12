@@ -42,13 +42,47 @@ def parse_iso_date(value):
         return None
 
 
+def normalizza_cap(value) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())[:5]
+
+
+def normalizza_zona(value) -> str:
+    return str(value or "").strip().upper()
+
+
 def zona_intervento(intervento: dict) -> str:
     if intervento.get("citta"):
-        return str(intervento["citta"]).strip().upper()
-    cap = str(intervento.get("cap") or "").strip()
+        return normalizza_zona(intervento["citta"])
+    cap = normalizza_cap(intervento.get("cap"))
     if cap:
         return cap[:2]
     return "SENZA_ZONA"
+
+
+def location_intervento(intervento: dict) -> dict:
+    zona = zona_intervento(intervento)
+    return {"cap": normalizza_cap(intervento.get("cap")), "zona": zona}
+
+
+def stima_viaggio_ore(origine: dict | None, destinazione: dict | None) -> tuple[float, str]:
+    origine = origine or {}
+    destinazione = destinazione or {}
+    from_cap = normalizza_cap(origine.get("cap"))
+    to_cap = normalizza_cap(destinazione.get("cap"))
+    from_zona = normalizza_zona(origine.get("zona"))
+    to_zona = normalizza_zona(destinazione.get("zona"))
+
+    if not any([from_cap, to_cap, from_zona, to_zona]):
+        return 0.25, "viaggio minimo stimato, dati sede/cliente mancanti"
+    if from_cap and to_cap and from_cap == to_cap:
+        return 0.15, "stesso CAP"
+    if from_zona and to_zona and from_zona == to_zona:
+        return 0.33, "stessa citta/zona"
+    if from_cap and to_cap and from_cap[:2] == to_cap[:2]:
+        return 0.5, "area CAP compatibile"
+    if from_zona and to_zona and from_zona != to_zona:
+        return 0.75, "zona diversa"
+    return 0.5, "viaggio medio stimato"
 
 
 def durata_intervento(intervento: dict) -> float:
@@ -156,6 +190,8 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
     proposta = {str(t["_id"]): {d.isoformat(): [] for d in calendar_days} for t in tecnici}
     capacity = {str(t["_id"]): {} for t in tecnici}
     zone_giorno = {str(t["_id"]): {d.isoformat(): None for d in calendar_days} for t in tecnici}
+    last_location = {str(t["_id"]): {d.isoformat(): {"cap": tecnico_cap(t), "zona": tecnico_zona(t)} for d in calendar_days} for t in tecnici}
+    travel_totals = {str(t["_id"]): {d.isoformat(): 0.0 for d in calendar_days} for t in tecnici}
     warnings = []
     non_pianificati = []
 
@@ -168,7 +204,8 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
 
     for intervento in sorted(interventi, key=intervento_sort_key):
         durata = durata_intervento(intervento)
-        zona = zona_intervento(intervento)
+        destinazione = location_intervento(intervento)
+        zona = destinazione["zona"]
         scadenza = parse_iso_date(intervento.get("data_pianificata"))
         explicit_tecnico = intervento.get("tecnico_id")
         assigned = False
@@ -183,8 +220,10 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
             for tecnico in candidate_tecnici:
                 tid = str(tecnico["_id"])
                 nome = f"{tecnico.get('nome', '')} {tecnico.get('cognome', '')}".strip()
-                if capacity[tid][day_key] < durata:
-                    motivazioni_scarto.append(f"{nome}: ore insufficienti")
+                viaggio, viaggio_reason = stima_viaggio_ore(last_location[tid][day_key], destinazione)
+                tempo_totale = durata + viaggio
+                if capacity[tid][day_key] < tempo_totale:
+                    motivazioni_scarto.append(f"{nome}: ore insufficienti incl. viaggio ({tempo_totale:.1f}h)")
                     continue
                 if vincolo_blocca(vincoli, tid, intervento.get("cliente_id")):
                     motivazioni_scarto.append(f"{nome}: vincolo cliente")
@@ -195,20 +234,23 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
                     continue
                 zona_attuale = zone_giorno[tid][day_key]
                 zona_penalty = 0 if zona_attuale in [None, zona] else 10
-                preferred_penalty = 0 if (tecnico_zona(tecnico) or "").upper() in [zona, ""] else 2
-                ranked.append((zona_penalty + preferred_penalty, -capacity[tid][day_key], tecnico))
+                preferred_penalty = 0 if normalizza_zona(tecnico_zona(tecnico)) in [zona, ""] else 2
+                ranked.append((zona_penalty + preferred_penalty, viaggio, -capacity[tid][day_key], tecnico, viaggio_reason))
 
-            ranked.sort(key=lambda x: x[0:2])
+            ranked.sort(key=lambda x: x[0:3])
             if not ranked:
                 continue
 
-            tecnico = ranked[0][2]
+            _, viaggio, _, tecnico, viaggio_reason = ranked[0]
             tid = str(tecnico["_id"])
             zona_attuale = zone_giorno[tid][day_key]
+            tempo_totale = durata + viaggio
             if zona_attuale and zona_attuale != zona:
                 warnings.append({"tipo": "ZONA_MISTA", "messaggio": f"Giornata con zona mista: {zona_attuale} + {zona}", "tecnico_id": tid, "date": day_key})
             zone_giorno[tid][day_key] = zona_attuale or zona
-            capacity[tid][day_key] -= durata
+            capacity[tid][day_key] -= tempo_totale
+            travel_totals[tid][day_key] += viaggio
+            last_location[tid][day_key] = destinazione
             proposta[tid][day_key].append({
                 "id": str(intervento["_id"]),
                 "codice_intervento": intervento.get("codice_intervento"),
@@ -218,8 +260,10 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
                 "priorita": intervento.get("priorita"),
                 "origine": intervento.get("origine"),
                 "zona": zona,
-                "durata_stimata": durata,
-                "motivazione": f"zona {zona}, durata {durata}h, residuo {capacity[tid][day_key]:.1f}h",
+                "durata_stimata": round(durata, 2),
+                "viaggio_stimato": round(viaggio, 2),
+                "tempo_totale": round(tempo_totale, 2),
+                "motivazione": f"zona {zona}, lavoro {durata:.1f}h, viaggio {viaggio:.1f}h ({viaggio_reason}), residuo {capacity[tid][day_key]:.1f}h",
             })
             assigned = True
             break
@@ -232,7 +276,9 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
                 "cliente_nome": intervento.get("cliente_nome"),
                 "priorita": intervento.get("priorita"),
                 "zona": zona,
-                "durata_stimata": durata,
+                "durata_stimata": round(durata, 2),
+                "viaggio_stimato": 0,
+                "tempo_totale": round(durata, 2),
                 "motivo": "; ".join(motivazioni_scarto[-5:]) or "nessuno slot compatibile entro finestra",
             })
 
@@ -241,14 +287,15 @@ async def genera_proposta(start: Optional[str] = None, days: int = 5):
         tid = str(tecnico["_id"])
         rows.append({
             "tecnico": {"id": tid, "codice_tecnico": tecnico.get("codice_tecnico", ""), "nome": tecnico.get("nome", ""), "cognome": tecnico.get("cognome", ""), "cap_partenza": tecnico_cap(tecnico), "zona_preferita": tecnico_zona(tecnico)},
-            "days": [{"date": d.isoformat(), "zona_dominante": zone_giorno[tid][d.isoformat()], "ore_residue": round(capacity[tid][d.isoformat()], 2), "interventi": proposta[tid][d.isoformat()]} for d in calendar_days],
+            "days": [{"date": d.isoformat(), "zona_dominante": zone_giorno[tid][d.isoformat()], "ore_residue": round(capacity[tid][d.isoformat()], 2), "viaggio_totale": round(travel_totals[tid][d.isoformat()], 2), "interventi": proposta[tid][d.isoformat()]} for d in calendar_days],
         })
 
+    viaggio_stimato_totale = round(sum(sum(days_map.values()) for days_map in travel_totals.values()), 2)
     return {
         "start": start_day.isoformat(),
         "days": [d.isoformat() for d in calendar_days],
         "rows": rows,
         "non_pianificati": non_pianificati,
         "warnings": warnings,
-        "totali": {"interventi_pool": len(interventi), "pianificati": len(interventi) - len(non_pianificati), "non_pianificati": len(non_pianificati), "warnings": len(warnings)},
+        "totali": {"interventi_pool": len(interventi), "pianificati": len(interventi) - len(non_pianificati), "non_pianificati": len(non_pianificati), "warnings": len(warnings), "viaggio_stimato_totale": viaggio_stimato_totale},
     }

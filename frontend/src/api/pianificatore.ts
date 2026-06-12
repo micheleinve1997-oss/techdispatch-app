@@ -44,6 +44,8 @@ export interface PropostaIntervento {
   origine?: string
   zona: string
   durata_stimata: number
+  viaggio_stimato?: number
+  tempo_totale?: number
   motivazione?: string
   motivo?: string
 }
@@ -52,6 +54,7 @@ export interface PropostaCell {
   date: string
   zona_dominante?: string | null
   ore_residue: number
+  viaggio_totale?: number
   interventi: PropostaIntervento[]
 }
 
@@ -78,6 +81,7 @@ export interface PlannerProposta {
     pianificati: number
     non_pianificati: number
     warnings: number
+    viaggio_stimato_totale?: number
   }
 }
 
@@ -85,3 +89,4 @@ export const pianificatoreApi = {
   overview: (start?: string) => api.get<PlannerOverview>('/pianificatore/overview', { params: start ? { start } : {} }).then(r => r.data),
   genera: (start?: string) => api.post<PlannerProposta>('/pianificatore/genera', null, { params: start ? { start } : {} }).then(r => r.data),
 }
+
