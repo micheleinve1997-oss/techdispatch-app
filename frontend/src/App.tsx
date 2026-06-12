@@ -10,6 +10,7 @@ import Tecnici from './pages/Tecnici'
 import TecnicoDetail from './pages/TecnicoDetail'
 import ImportTecnici from './pages/ImportTecnici'
 import Interventi from './pages/Interventi'
+import InterventoDetail from './pages/InterventoDetail'
 import ImportInterventi from './pages/ImportInterventi'
 import Vincoli from './pages/Vincoli'
 import Pianificatore from './pages/Pianificatore'
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/tecnici/:id" element={<TecnicoDetail />} />
               <Route path="/tecnici-import" element={<ImportTecnici />} />
               <Route path="/interventi" element={<Interventi />} />
+              <Route path="/interventi/:id" element={<InterventoDetail />} />
               <Route path="/interventi-import" element={<ImportInterventi />} />
               <Route path="/pianificatore" element={<Pianificatore />} />
               <Route path="/vincoli" element={<Vincoli />} />

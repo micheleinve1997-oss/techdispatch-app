@@ -43,6 +43,7 @@ export interface PropostaIntervento {
   priorita?: string
   origine?: string
   zona: string
+  cap?: string
   durata_stimata: number
   viaggio_stimato?: number
   tempo_totale?: number

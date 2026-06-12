@@ -47,6 +47,7 @@ class InterventoCreate(BaseModel):
     origine: OrigineIntervento = OrigineIntervento.manuale
     stato: StatoIntervento = StatoIntervento.aperto
     priorita: PrioritaIntervento = PrioritaIntervento.media
+    durata_stimata: Optional[float] = None
     cliente_id: Optional[str] = None
     cliente_codice: Optional[str] = None
     cliente_nome: Optional[str] = None

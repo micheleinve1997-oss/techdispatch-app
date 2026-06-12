@@ -223,7 +223,7 @@ export default function Interventi() {
               {filtered.map(intervento => {
                 const Icon = origineIcon[intervento.origine]
                 return (
-                  <div key={intervento.id} className="px-8 py-4 hover:bg-slate-50 transition-colors">
+                  <div key={intervento.id} onClick={() => navigate(`/interventi/${intervento.id}`)} className="px-8 py-4 hover:bg-slate-50 transition-colors cursor-pointer">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                         <Icon size={18} />
@@ -241,7 +241,7 @@ export default function Interventi() {
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                          <span>{intervento.codice_intervento}</span>
+                          <span className="font-mono text-blue-700 underline decoration-blue-200 underline-offset-2">{intervento.codice_intervento}</span>
                           <span>{ORIGINE_LABEL[intervento.origine]}</span>
                           {intervento.cliente_nome && <span>Cliente: {intervento.cliente_nome}</span>}
                           {intervento.tecnico_nome && <span>Tecnico: {intervento.tecnico_nome}</span>}
