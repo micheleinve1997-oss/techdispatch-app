@@ -1,7 +1,28 @@
 ﻿import { useMemo, useState, type DragEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, GripVertical, Map, Sparkles, ShieldAlert, X } from 'lucide-react'
-import { pianificatoreApi, type PropostaCell, type PropostaIntervento, type PropostaRow } from '../api/pianificatore'
+import { pianificatoreApi, type PlannerProposta, type PropostaCell, type PropostaIntervento, type PropostaRow } from '../api/pianificatore'
+
+const PLANNER_STORAGE_PREFIX = 'techdispatch:pianificatore:'
+
+function storageKey(start: string) {
+  return PLANNER_STORAGE_PREFIX + start
+}
+
+function readStoredPlan(start: string): PlannerProposta | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(storageKey(start))
+    return raw ? JSON.parse(raw) as PlannerProposta : null
+  } catch {
+    return null
+  }
+}
+
+function writeStoredPlan(plan: PlannerProposta) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(storageKey(plan.start), JSON.stringify(plan))
+}
 
 function isoMonday(date = new Date()) {
   const d = new Date(date)
@@ -165,6 +186,7 @@ function RouteViewer({ route, onClose }: { route: RouteModal; onClose: () => voi
 
 export default function Pianificatore() {
   const [start, setStart] = useState(isoMonday())
+  const [savedProposal, setSavedProposal] = useState<PlannerProposta | null>(() => readStoredPlan(isoMonday()))
   const [manualRows, setManualRows] = useState<PropostaRow[] | null>(null)
   const [routeModal, setRouteModal] = useState<RouteModal>(null)
   const { data, isLoading, refetch } = useQuery({
@@ -174,20 +196,34 @@ export default function Pianificatore() {
 
   const propostaMutation = useMutation({
     mutationFn: () => pianificatoreApi.genera(start),
-    onSuccess: proposta => setManualRows(proposta.rows),
+    onSuccess: proposta => {
+      setSavedProposal(proposta)
+      setManualRows(proposta.rows)
+      writeStoredPlan(proposta)
+    },
   })
   const proposta = propostaMutation.data
-  const rows = manualRows ?? proposta?.rows ?? data?.rows ?? []
-  const days = proposta?.days ?? data?.days ?? []
-  const isProposal = Boolean(proposta)
+  const activeProposal = proposta ?? savedProposal
+  const rows = manualRows ?? activeProposal?.rows ?? data?.rows ?? []
+  const days = activeProposal?.days ?? data?.days ?? []
+  const isProposal = Boolean(activeProposal)
   const indisponibili = useMemo(() => (data?.rows ?? []).reduce((sum, r) => sum + r.days.filter(d => !d.disponibile).length, 0), [data])
   const manualTravelTotal = useMemo(() => manualRows?.reduce((sum, row) => sum + row.days.reduce((daySum, cell) => daySum + (cell.viaggio_totale ?? 0), 0), 0), [manualRows])
 
   function resetWeek(nextStart: string) {
     setStart(nextStart)
+    setSavedProposal(readStoredPlan(nextStart))
     setManualRows(null)
     setRouteModal(null)
     propostaMutation.reset()
+  }
+
+  function persistRows(nextRows: PropostaRow[]) {
+    if (!activeProposal) return
+    const viaggioStimatoTotale = Number(nextRows.reduce((sum, row) => sum + row.days.reduce((daySum, cell) => daySum + (cell.viaggio_totale ?? 0), 0), 0).toFixed(2))
+    const nextProposal = { ...activeProposal, rows: nextRows, totali: { ...activeProposal.totali, viaggio_stimato_totale: viaggioStimatoTotale } }
+    setSavedProposal(nextProposal)
+    writeStoredPlan(nextProposal)
   }
 
   function handleDrop(event: DragEvent<HTMLElement>, target: { tecnicoId: string; date: string; insertIndex?: number }) {
@@ -196,7 +232,11 @@ export default function Pianificatore() {
     try {
       const drag = JSON.parse(event.dataTransfer.getData('application/json')) as DragPayload
       if (drag.tecnicoId === target.tecnicoId && drag.date === target.date && drag.index === target.insertIndex) return
-      setManualRows(current => moveItem(current ?? proposta?.rows ?? [], drag, target))
+      setManualRows(current => {
+        const nextRows = moveItem(current ?? activeProposal?.rows ?? [], drag, target)
+        persistRows(nextRows)
+        return nextRows
+      })
     } catch {
       // drag esterno non valido
     }
@@ -214,7 +254,7 @@ export default function Pianificatore() {
           <button onClick={() => resetWeek(addDays(start, -7))} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50"><ChevronLeft size={17} /></button>
           <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium"><CalendarDays size={16} />Settimana {start}</div>
           <button onClick={() => resetWeek(addDays(start, 7))} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50"><ChevronRight size={17} /></button>
-          <button onClick={() => { setManualRows(null); setRouteModal(null); propostaMutation.reset(); refetch() }} className="ml-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50">Aggiorna</button>
+          <button onClick={() => { setManualRows(null); setRouteModal(null); setSavedProposal(readStoredPlan(start)); propostaMutation.reset(); refetch() }} className="ml-2 px-3 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50">Aggiorna</button>
           <button onClick={() => propostaMutation.mutate()} disabled={propostaMutation.isPending} className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
             <Sparkles size={15} /> {propostaMutation.isPending ? 'Genero...' : 'Genera proposta'}
           </button>
@@ -225,17 +265,17 @@ export default function Pianificatore() {
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Tecnici</p><p className="text-2xl font-semibold">{data?.rows.length ?? 0}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Vincoli</p><p className="text-2xl font-semibold">{data?.vincoli_totali ?? 0}</p></div>
         <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Blocchi</p><p className="text-2xl font-semibold">{indisponibili}</p></div>
-        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Pianificati</p><p className="text-2xl font-semibold">{proposta?.totali.pianificati ?? '-'}</p></div>
-        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Fuori</p><p className="text-2xl font-semibold">{proposta?.totali.non_pianificati ?? '-'}</p></div>
-        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Viaggio</p><p className="text-2xl font-semibold">{formatHours(manualTravelTotal ?? proposta?.totali.viaggio_stimato_totale)}h</p></div>
+        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Pianificati</p><p className="text-2xl font-semibold">{activeProposal?.totali.pianificati ?? '-'}</p></div>
+        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Fuori</p><p className="text-2xl font-semibold">{activeProposal?.totali.non_pianificati ?? '-'}</p></div>
+        <div className="rounded-lg border border-slate-200 px-4 py-3"><p className="text-xs text-slate-500 uppercase font-semibold">Viaggio</p><p className="text-2xl font-semibold">{formatHours(manualTravelTotal ?? activeProposal?.totali.viaggio_stimato_totale)}h</p></div>
       </div>
 
-      {manualRows && proposta ? <div className="mx-8 mt-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Modifica manuale attiva: puoi trascinare gli interventi tra tecnici/giorni e riordinare le tappe della giornata.</div> : null}
+      {activeProposal ? <div className="mx-8 mt-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Modifica manuale attiva: puoi trascinare gli interventi tra tecnici/giorni e riordinare le tappe della giornata.</div> : null}
 
-      {proposta?.warnings.length ? (
+      {activeProposal?.warnings.length ? (
         <div className="mx-8 mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
           <AlertTriangle size={17} className="mt-0.5" />
-          <div><p className="font-semibold">Warning algoritmo</p>{proposta.warnings.slice(0, 3).map((w, i) => <p key={i}>{w.messaggio}</p>)}</div>
+          <div><p className="font-semibold">Warning algoritmo</p>{activeProposal.warnings.slice(0, 3).map((w, i) => <p key={i}>{w.messaggio}</p>)}</div>
         </div>
       ) : null}
 
@@ -283,7 +323,11 @@ export default function Pianificatore() {
                                       item={entry.item}
                                       time={entry}
                                       dragPayload={{ tecnicoId: row.tecnico.id, date: cell.date, index }}
-                                      onDropBefore={event => setManualRows(current => moveItem(current ?? proposta?.rows ?? [], JSON.parse(event.dataTransfer.getData('application/json') || '{}'), { tecnicoId: row.tecnico.id, date: cell.date, insertIndex: index }))}
+                                      onDropBefore={event => setManualRows(current => {
+                                        const nextRows = moveItem(current ?? activeProposal?.rows ?? [], JSON.parse(event.dataTransfer.getData('application/json') || '{}'), { tecnicoId: row.tecnico.id, date: cell.date, insertIndex: index })
+                                        persistRows(nextRows)
+                                        return nextRows
+                                      })}
                                     />
                                   )) : <p className="text-xs text-slate-400">Trascina qui un intervento</p>}
                                 </div>
@@ -300,11 +344,11 @@ export default function Pianificatore() {
           </div>
         )}
 
-        {proposta?.non_pianificati.length ? (
+        {activeProposal?.non_pianificati.length ? (
           <section className="mt-8 border border-red-200 rounded-xl overflow-hidden">
             <div className="bg-red-50 px-4 py-3 border-b border-red-100"><h2 className="font-semibold text-red-800">Interventi non pianificabili</h2></div>
             <div className="divide-y divide-red-100">
-              {proposta.non_pianificati.map(i => <div key={i.id} className="px-4 py-3"><p className="font-medium text-slate-900">{i.codice_intervento} · {i.titolo}</p><p className="text-sm text-red-700 mt-1">{i.motivo}</p></div>)}
+              {activeProposal.non_pianificati.map(i => <div key={i.id} className="px-4 py-3"><p className="font-medium text-slate-900">{i.codice_intervento} · {i.titolo}</p><p className="text-sm text-red-700 mt-1">{i.motivo}</p></div>)}
             </div>
           </section>
         ) : null}
