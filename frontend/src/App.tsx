@@ -1,12 +1,11 @@
 ﻿import { useState } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Toolbar from './components/Toolbar'
 import BreadcrumbBar from './components/BreadcrumbBar'
 import Clienti from './pages/Clienti'
 import ClienteForm from './pages/ClienteForm'
 import ComingSoon from './pages/ComingSoon'
-import Landing from './pages/Landing'
 import Tecnici from './pages/Tecnici'
 import TecnicoDetail from './pages/TecnicoDetail'
 import ImportTecnici from './pages/ImportTecnici'
@@ -20,12 +19,6 @@ import { ToolbarProvider } from './context/ToolbarContext'
 
 export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const location = useLocation()
-  const isLanding = location.pathname === '/'
-
-  if (isLanding) {
-    return <Landing />
-  }
 
   return (
     <ToolbarProvider>
@@ -36,6 +29,7 @@ export default function App() {
           <Toolbar />
           <main className="flex-1 w-full min-w-0 overflow-auto">
             <Routes>
+              <Route path="/" element={<Navigate to="/clienti" replace />} />
               <Route path="/clienti" element={<Clienti />} />
               <Route path="/clienti/nuovo" element={<ClienteForm />} />
               <Route path="/clienti/:id" element={<ClienteForm />} />
